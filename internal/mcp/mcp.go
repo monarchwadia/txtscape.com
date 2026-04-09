@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
-	"time"
 )
 
 type jsonrpcRequest struct {
@@ -35,18 +36,19 @@ type toolCallParams struct {
 	Arguments json.RawMessage `json:"arguments"`
 }
 
-type surfArgs struct {
-	URL string `json:"url"`
+// Server is an MCP server that dispatches tool calls to an internal HTTP handler.
+type Server struct {
+	handler http.Handler
 }
 
-var httpClient = &http.Client{
-	Timeout: 10 * time.Second,
+// NewServer creates an MCP server backed by the given HTTP handler (typically the app's mux).
+func NewServer(handler http.Handler) *Server {
+	return &Server{handler: handler}
 }
 
 // Serve runs the MCP server on stdin/stdout using JSON-RPC.
-func Serve() {
+func (s *Server) Serve() {
 	scanner := bufio.NewScanner(os.Stdin)
-	// Allow up to 1MB per line (for large requests)
 	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024)
 
 	for scanner.Scan() {
@@ -59,12 +61,12 @@ func Serve() {
 			})
 			continue
 		}
-		resp := handleRequest(req)
+		resp := s.handleRequest(req)
 		writeResponse(os.Stdout, resp)
 	}
 }
 
-func handleRequest(req jsonrpcRequest) jsonrpcResponse {
+func (s *Server) handleRequest(req jsonrpcRequest) jsonrpcResponse {
 	switch req.Method {
 	case "initialize":
 		return jsonrpcResponse{
@@ -83,7 +85,6 @@ func handleRequest(req jsonrpcRequest) jsonrpcResponse {
 		}
 
 	case "notifications/initialized":
-		// No response needed for notifications
 		return jsonrpcResponse{}
 
 	case "tools/list":
@@ -91,27 +92,12 @@ func handleRequest(req jsonrpcRequest) jsonrpcResponse {
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Result: map[string]any{
-				"tools": []map[string]any{
-					{
-						"name":        "surf",
-						"description": "Fetch a .txt URL and return its contents. Use this to browse the txtscape network — follow markdown links from page to page.",
-						"inputSchema": map[string]any{
-							"type": "object",
-							"properties": map[string]any{
-								"url": map[string]any{
-									"type":        "string",
-									"description": "The HTTPS URL of a .txt file to fetch",
-								},
-							},
-							"required": []string{"url"},
-						},
-					},
-				},
+				"tools": toolDefinitions(),
 			},
 		}
 
 	case "tools/call":
-		return handleToolCall(req)
+		return s.handleToolCall(req)
 
 	default:
 		return jsonrpcResponse{
@@ -122,7 +108,102 @@ func handleRequest(req jsonrpcRequest) jsonrpcResponse {
 	}
 }
 
-func handleToolCall(req jsonrpcRequest) jsonrpcResponse {
+func toolDefinitions() []map[string]any {
+	return []map[string]any{
+		{
+			"name":        "get_page",
+			"description": "Fetch a page or directory listing from the txtscape network. Pages are plain text linked together with markdown-style links. Follow links to browse from page to page. Start at a user's root (/~username) to see their directory listing.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"path": map[string]any{
+						"type":        "string",
+						"description": "Path like /~alice/blog/post.txt or /~alice for directory listing",
+					},
+				},
+				"required": []string{"path"},
+			},
+		},
+		{
+			"name":        "put_page",
+			"description": "Create or update a plain text page. Path must end in .txt. Maximum 100KB. Folders are created implicitly. Requires a token from signup or login.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"path": map[string]any{
+						"type":        "string",
+						"description": "Path like /~alice/blog/post.txt",
+					},
+					"content": map[string]any{
+						"type":        "string",
+						"description": "Plain text content (may contain markdown links to other pages)",
+					},
+					"token": map[string]any{
+						"type":        "string",
+						"description": "Bearer token from signup or login",
+					},
+				},
+				"required": []string{"path", "content", "token"},
+			},
+		},
+		{
+			"name":        "delete_page",
+			"description": "Delete a page. Requires a token from signup or login.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"path": map[string]any{
+						"type":        "string",
+						"description": "Path like /~alice/blog/post.txt",
+					},
+					"token": map[string]any{
+						"type":        "string",
+						"description": "Bearer token from signup or login",
+					},
+				},
+				"required": []string{"path", "token"},
+			},
+		},
+		{
+			"name":        "signup",
+			"description": "Create a new account. Returns a bearer token for writing pages.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"username": map[string]any{
+						"type":        "string",
+						"description": "1-30 lowercase alphanumeric, hyphens, or underscores",
+					},
+					"password": map[string]any{
+						"type":        "string",
+						"description": "8-72 characters",
+					},
+				},
+				"required": []string{"username", "password"},
+			},
+		},
+		{
+			"name":        "login",
+			"description": "Get a new bearer token for an existing account.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"username": map[string]any{
+						"type":        "string",
+						"description": "Your username",
+					},
+					"password": map[string]any{
+						"type":        "string",
+						"description": "Your password",
+					},
+				},
+				"required": []string{"username", "password"},
+			},
+		},
+	}
+}
+
+func (s *Server) handleToolCall(req jsonrpcRequest) jsonrpcResponse {
 	var params toolCallParams
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return jsonrpcResponse{
@@ -132,74 +213,185 @@ func handleToolCall(req jsonrpcRequest) jsonrpcResponse {
 		}
 	}
 
-	if params.Name != "surf" {
+	switch params.Name {
+	case "get_page":
+		return s.handleGetPage(req.ID, params.Arguments)
+	case "put_page":
+		return s.handlePutPage(req.ID, params.Arguments)
+	case "delete_page":
+		return s.handleDeletePage(req.ID, params.Arguments)
+	case "signup":
+		return s.handleSignup(req.ID, params.Arguments)
+	case "login":
+		return s.handleLogin(req.ID, params.Arguments)
+	default:
 		return jsonrpcResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Error:   &jsonrpcError{Code: -32602, Message: "unknown tool: " + params.Name},
 		}
 	}
+}
 
-	var args surfArgs
-	if err := json.Unmarshal(params.Arguments, &args); err != nil {
-		return jsonrpcResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error:   &jsonrpcError{Code: -32602, Message: "invalid arguments"},
-		}
+// callInternal dispatches a request to the internal HTTP handler.
+func (s *Server) callInternal(method, path string, body io.Reader, headers map[string]string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, path, body)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	rec := httptest.NewRecorder()
+	s.handler.ServeHTTP(rec, req)
+	return rec
+}
+
+func (s *Server) handleGetPage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return toolError(id, "invalid arguments")
+	}
+	if a.Path == "" {
+		return toolError(id, "path is required")
 	}
 
-	if args.URL == "" {
-		return toolError(req.ID, "url is required")
+	rec := s.callInternal("GET", a.Path, nil, nil)
+	body := rec.Body.String()
+
+	if rec.Code >= 400 {
+		return toolError(id, fmt.Sprintf("HTTP %d: %s", rec.Code, strings.TrimSpace(body)))
 	}
 
-	if !strings.HasPrefix(args.URL, "https://") {
-		return toolError(req.ID, "only https:// URLs are supported")
+	return toolSuccess(id, body)
+}
+
+func (s *Server) handlePutPage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		Path    string `json:"path"`
+		Content string `json:"content"`
+		Token   string `json:"token"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return toolError(id, "invalid arguments")
+	}
+	if a.Path == "" {
+		return toolError(id, "path is required")
+	}
+	if a.Content == "" {
+		return toolError(id, "content is required")
+	}
+	if a.Token == "" {
+		return toolError(id, "token is required")
 	}
 
-	content, err := fetchURL(args.URL)
-	if err != nil {
-		return toolError(req.ID, err.Error())
+	rec := s.callInternal("PUT", a.Path, strings.NewReader(a.Content), map[string]string{
+		"Authorization": "Bearer " + a.Token,
+	})
+	body := rec.Body.String()
+
+	if rec.Code >= 400 {
+		return toolError(id, fmt.Sprintf("HTTP %d: %s", rec.Code, strings.TrimSpace(body)))
 	}
 
+	return toolSuccess(id, "page saved")
+}
+
+func (s *Server) handleDeletePage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		Path  string `json:"path"`
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return toolError(id, "invalid arguments")
+	}
+	if a.Path == "" {
+		return toolError(id, "path is required")
+	}
+	if a.Token == "" {
+		return toolError(id, "token is required")
+	}
+
+	rec := s.callInternal("DELETE", a.Path, nil, map[string]string{
+		"Authorization": "Bearer " + a.Token,
+	})
+	body := rec.Body.String()
+
+	if rec.Code >= 400 {
+		return toolError(id, fmt.Sprintf("HTTP %d: %s", rec.Code, strings.TrimSpace(body)))
+	}
+
+	return toolSuccess(id, "page deleted")
+}
+
+func (s *Server) handleSignup(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return toolError(id, "invalid arguments")
+	}
+	if a.Username == "" {
+		return toolError(id, "username is required")
+	}
+	if a.Password == "" {
+		return toolError(id, "password is required")
+	}
+
+	form := url.Values{"username": {a.Username}, "password": {a.Password}}
+	rec := s.callInternal("POST", "/signup", strings.NewReader(form.Encode()), map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded",
+	})
+	body := rec.Body.String()
+
+	if rec.Code >= 400 {
+		return toolError(id, fmt.Sprintf("HTTP %d: %s", rec.Code, strings.TrimSpace(body)))
+	}
+
+	return toolSuccess(id, strings.TrimSpace(body))
+}
+
+func (s *Server) handleLogin(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return toolError(id, "invalid arguments")
+	}
+	if a.Username == "" {
+		return toolError(id, "username is required")
+	}
+	if a.Password == "" {
+		return toolError(id, "password is required")
+	}
+
+	form := url.Values{"username": {a.Username}, "password": {a.Password}}
+	rec := s.callInternal("POST", "/login", strings.NewReader(form.Encode()), map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded",
+	})
+	body := rec.Body.String()
+
+	if rec.Code >= 400 {
+		return toolError(id, fmt.Sprintf("HTTP %d: %s", rec.Code, strings.TrimSpace(body)))
+	}
+
+	return toolSuccess(id, strings.TrimSpace(body))
+}
+
+func toolSuccess(id json.RawMessage, text string) jsonrpcResponse {
 	return jsonrpcResponse{
 		JSONRPC: "2.0",
-		ID:      req.ID,
+		ID:      id,
 		Result: map[string]any{
 			"content": []map[string]any{
 				{
 					"type": "text",
-					"text": content,
+					"text": text,
 				},
 			},
 		},
 	}
-}
-
-func fetchURL(url string) (string, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", fmt.Errorf("building request for %s: %w", url, err)
-	}
-	req.Header.Set("User-Agent", "txtscape/1.0")
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("fetching %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("fetching %s: status %d", url, resp.StatusCode)
-	}
-
-	// Limit to 1MB
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
-	if err != nil {
-		return "", fmt.Errorf("reading response from %s: %w", url, err)
-	}
-
-	return string(body), nil
 }
 
 func toolError(id json.RawMessage, msg string) jsonrpcResponse {
@@ -219,7 +411,6 @@ func toolError(id json.RawMessage, msg string) jsonrpcResponse {
 }
 
 func writeResponse(w io.Writer, resp jsonrpcResponse) {
-	// Skip empty responses (notifications)
 	if resp.JSONRPC == "" {
 		return
 	}

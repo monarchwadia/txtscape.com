@@ -16,13 +16,7 @@ import (
 )
 
 func main() {
-	// MCP mode: run as stdio JSON-RPC server
-	if len(os.Args) > 1 && os.Args[1] == "mcp" {
-		mcp.Serve()
-		return
-	}
-
-	// HTTP server mode
+	// Both modes need DATABASE_URL
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		log.Fatal("DATABASE_URL is required")
@@ -68,8 +62,12 @@ func main() {
 		http.NotFound(w, r)
 	})
 
-	// Root
-	// (handled by catch-all above)
+	// MCP mode: run as stdio JSON-RPC server backed by the same mux
+	if len(os.Args) > 1 && os.Args[1] == "mcp" {
+		mcpServer := mcp.NewServer(mux)
+		mcpServer.Serve()
+		return
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
