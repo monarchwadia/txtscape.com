@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>txtscape — What if the web was just text files that linked to each other?</title>
+<meta name="description" content="A decentralized web of plain text pages, interlinked with markdown links. Readable by humans and agents. No HTML, no JS — just .txt.">
+
+<!-- Open Graph (Facebook, LinkedIn, Discord, Slack) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://txtscape.com/">
+<meta property="og:title" content="txtscape">
+<meta property="og:description" content="What if the web was just text files that linked to each other?">
+<meta property="og:image" content="https://txtscape.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="txtscape — plain text pages, interlinked">
+<meta property="og:site_name" content="txtscape">
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="txtscape">
+<meta name="twitter:description" content="What if the web was just text files that linked to each other?">
+<meta name="twitter:image" content="https://txtscape.com/og-image.png">
+<meta name="twitter:image:alt" content="txtscape — plain text pages, interlinked">
+
+<style>
+body {
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  max-width: 640px;
+  margin: 80px auto;
+  padding: 0 24px;
+  line-height: 1.7;
+}
+a { color: #3fb950; }
+h1 { font-size: 2.5em; margin-bottom: 0; }
+.tagline { color: #7d8590; font-size: 1.1em; margin-top: 8px; }
+.prompt { color: #484f58; font-size: 0.85em; margin-top: 48px; }
+pre { color: #7d8590; font-size: 0.85em; }
+</style>
+</head>
+<body>
+<h1>txtscape</h1>
+<p class="tagline">What if the web was just text files that linked to each other?</p>
+
+<pre>
+$ curl txtscape.com/~alice/hello.txt
+
+hello world!
+check out my [notes](/~alice/notes/ideas.txt)
+</pre>
+
+<p>Plain text pages, interlinked with markdown links.<br>
+Readable by humans and agents. No HTML, no JS — just .txt.</p>
+
+<p>
+<a href="/spec.txt">spec.txt</a> ·
+<a href="/index.txt">index.txt</a> ·
+<a href="https://github.com/monarchwadia/txtscape.com">source</a>
+</p>
+
+<p class="prompt">$ _</p>
+</body>
+</html>

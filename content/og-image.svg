@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;display=swap');
+    </style>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0d1117"/>
+  
+  <!-- Subtle grid lines -->
+  <g opacity="0.06" stroke="#c9d1d9">
+    <line x1="0" y1="100" x2="1200" y2="100"/>
+    <line x1="0" y1="200" x2="1200" y2="200"/>
+    <line x1="0" y1="300" x2="1200" y2="300"/>
+    <line x1="0" y1="400" x2="1200" y2="400"/>
+    <line x1="0" y1="500" x2="1200" y2="500"/>
+  </g>
+  
+  <!-- Terminal prompt decoration -->
+  <text x="80" y="180" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="18" fill="#484f58">$ curl txtscape.com/~alice/hello.txt</text>
+  
+  <!-- Title -->
+  <text x="80" y="280" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="64" font-weight="700" fill="#e6edf3">txtscape</text>
+  
+  <!-- Tagline -->
+  <text x="80" y="360" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="24" fill="#7d8590">What if the web was just text files</text>
+  <text x="80" y="396" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="24" fill="#7d8590">that linked to each other?</text>
+  
+  <!-- Decorative links -->
+  <text x="80" y="490" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="16" fill="#484f58">[hello.txt](/~alice/hello.txt)  [notes/](/~alice/notes/)  [ideas.txt](/~bob/ideas.txt)</text>
+  
+  <!-- Domain -->
+  <text x="80" y="560" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="18" fill="#3fb950">txtscape.com</text>
+  
+  <!-- Accent bar -->
+  <rect x="0" y="620" width="1200" height="10" fill="#3fb950"/>
+</svg>

@@ -63,9 +63,9 @@ func main() {
 			tildeHandler(w, r)
 			return
 		}
-		// Default: redirect root to index.txt, 404 everything else
+		// Default: serve index.txt at root, 404 everything else
 		if r.URL.Path == "/" && r.Method == http.MethodGet {
-			http.Redirect(w, r, "/index.txt", http.StatusMovedPermanently)
+			handler.HandleStaticFile("content/index.txt")(w, r)
 			return
 		}
 		http.NotFound(w, r)

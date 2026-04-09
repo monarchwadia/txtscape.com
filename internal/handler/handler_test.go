@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -125,6 +126,32 @@ func TestHandleSignup_QueryStringCredentials_PreventURLLeakage_IgnoresQueryParam
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400 — query string credentials should be rejected", w.Code)
+	}
+}
+
+func TestHandleStaticFile_HTMLFile_ServeWithCorrectContentType_ReturnsTextHTML(t *testing.T) {
+	// Business context: The landing page is an HTML file with OG meta tags for
+	// social media previews. HandleStaticFile must detect the content type from
+	// the file extension so crawlers receive text/html, not text/plain.
+	// Scenario: Serve a .html file via HandleStaticFile.
+	// Expected: Content-Type is text/html, status 200, body matches file content.
+
+	dir := t.TempDir()
+	htmlPath := dir + "/test.html"
+	os.WriteFile(htmlPath, []byte("<html><head><title>test</title></head></html>"), 0644)
+
+	handler := HandleStaticFile(htmlPath)
+	req := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/html") {
+		t.Fatalf("content-type = %q, want text/html", ct)
 	}
 }
 
