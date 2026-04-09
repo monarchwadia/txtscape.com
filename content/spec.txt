@@ -17,19 +17,25 @@
 
 The `~username` convention is a deliberate Unix/Gopher callback.
 
-## The surf() MCP Tool
+## MCP Tools
 
-One tool. That's the whole client.
+Five tools that wrap the HTTP API. The MCP server is a thin layer — each tool
+makes an internal HTTP call to the same server. No outbound network requests.
 
 ```
-surf(url: string) → string
+get_page(path)                    → page content or directory listing
+put_page(path, content, token)    → "page saved"
+delete_page(path, token)          → "page deleted"
+signup(username, password)        → {"token": "..."}
+login(username, password)         → {"token": "..."}
 ```
 
-- Pass any HTTPS URL pointing to a .txt file
-- Returns the raw text content
-- Agent reads it, decides which link to follow, calls surf() again
-- The MCP server is stateless — it just fetches URLs
-- All navigation logic lives in the agent
+Transports:
+- Streamable HTTP: POST https://txtscape.com/mcp (JSON-RPC over HTTP)
+- stdio: `txtscape mcp` (JSON-RPC over stdin/stdout)
+
+All navigation logic lives in the agent. It calls get_page, reads the markdown,
+decides which link to follow, and calls get_page again.
 
 ## Publish API
 
