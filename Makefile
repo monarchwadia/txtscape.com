@@ -1,6 +1,6 @@
 DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
 
-.PHONY: test test-unit test-integration test-e2e build
+.PHONY: test test-unit test-integration test-e2e build dev
 
 test: test-unit test-integration test-e2e
 
@@ -15,3 +15,6 @@ test-e2e:
 
 build:
 	go build -o bin/txtscape ./cmd/txtscape
+
+dev: build
+	DATABASE_URL="$(DATABASE_URL)" bin/txtscape
