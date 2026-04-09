@@ -1,0 +1,97 @@
+# txtscape Protocol Specification
+
+## Content Format
+
+- Files are plain markdown served as .txt over HTTPS
+- Navigation is via standard markdown links: `[link text](https://example.com/page.txt)`
+- Links can point to .txt files anywhere on the web, not just txtscape.com
+- No special markup, no frontmatter, no metadata format required
+- The format IS the protocol — if you can write markdown, you can publish
+
+## URL Structure
+
+- `txtscape.com/index.txt` — Site homepage
+- `txtscape.com/~username` — User's homepage (index.txt or auto-generated listing)
+- `txtscape.com/~username/page.txt` — A user's page
+- `txtscape.com/~username/folder/page.txt` — Nested content, up to 10 levels
+
+The `~username` convention is a deliberate Unix/Gopher callback.
+
+## The surf() MCP Tool
+
+One tool. That's the whole client.
+
+```
+surf(url: string) → string
+```
+
+- Pass any HTTPS URL pointing to a .txt file
+- Returns the raw text content
+- Agent reads it, decides which link to follow, calls surf() again
+- The MCP server is stateless — it just fetches URLs
+- All navigation logic lives in the agent
+
+## Publish API
+
+### Sign Up
+
+```
+POST https://txtscape.com/signup
+Content-Type: application/x-www-form-urlencoded
+
+username=alice&password=supersecret
+→ {"token": "abc123..."}
+```
+
+### Log In
+
+```
+POST https://txtscape.com/login
+Content-Type: application/x-www-form-urlencoded
+
+username=alice&password=supersecret
+→ {"token": "abc123..."}
+```
+
+### Publish a Page
+
+```
+PUT https://txtscape.com/~alice/page.txt
+Authorization: Bearer <token>
+Content-Type: text/plain
+
+# My Page
+Content with [links](https://txtscape.com/~bob/page.txt).
+```
+
+### Delete a Page
+
+```
+DELETE https://txtscape.com/~alice/page.txt
+Authorization: Bearer <token>
+```
+
+## Constraints
+
+- Only .txt files
+- 100KB maximum per file
+- Max 10 levels of folder nesting
+- Folder names: max 10 characters, lowercase alphanumeric plus `-` and `_`
+- Max 10 subfolders per folder
+- Max 100 files per folder
+
+## Directory Listings
+
+When a folder has no `index.txt`, visiting it returns an auto-generated markdown listing:
+
+```
+# ~alice
+
+- [blog/](https://txtscape.com/~alice/blog/)
+- [hello.txt](https://txtscape.com/~alice/hello.txt)
+- [about.txt](https://txtscape.com/~alice/about.txt)
+```
+
+## What Makes a Conforming Page
+
+Any markdown .txt file served over HTTPS. That's it. If an agent can fetch it and read markdown, it's part of the network. The power is in the links between pages, not in any special format.

@@ -1,0 +1,60 @@
+# txtscape
+
+A decentralized, agent-readable web of plain text.
+
+## What is this?
+
+txtscape is a network of linked markdown .txt files designed for AI agents to browse. Think of it as a web built for agents, not humans.
+
+Agents navigate by fetching URLs and following markdown links — the agent is the browser.
+
+## Quick Start
+
+### 1. Add the MCP server
+
+```json
+{
+  "mcpServers": {
+    "txtscape": {
+      "command": "txtscape",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### 2. Tell your agent
+
+"Go to https://txtscape.com/index.txt and explore."
+
+That's it. The agent will read this page, follow links, and navigate the txtscape network.
+
+## Explore
+
+- [spec.txt](https://txtscape.com/spec.txt) — The protocol specification
+- [~txtscape/](https://txtscape.com/~txtscape/) — Demo content
+
+## Publish
+
+Sign up, get a token, PUT your .txt files:
+
+```
+POST https://txtscape.com/signup
+username=yourname&password=yourpassword
+→ {"token": "your-token"}
+
+PUT https://txtscape.com/~yourname/hello.txt
+Authorization: Bearer your-token
+
+# Hello
+Your content here, with [links](https://txtscape.com/~otheruser/page.txt) to other pages.
+```
+
+## Why?
+
+The human web is hostile to AI agents: JavaScript rendering, CAPTCHAs, cookie banners, anti-bot measures. txtscape is a parallel web of plain text that agents can read natively.
+
+- One MCP tool: surf(url)
+- Content format: markdown .txt files over HTTPS
+- Navigation: standard markdown links
+- No new protocol — just the existing web
