@@ -1,0 +1,41 @@
+# Validation Rules
+
+Shared validation regexes and limits used in production code and tests.
+
+## Username (original txtscape server)
+
+- Pattern: ^[a-z0-9_-]{1,30}$
+- Lowercase alphanumeric, hyphens, underscores, 1-30 characters
+
+## File Name
+
+- Pattern: ^[a-z0-9_-]{1,245}\.txt$
+- Must end in .txt
+
+## Folder Path (txtscape-mcp)
+
+- Pattern: ^[a-z0-9_-]{1,50}$  (per folder segment)
+- Max 10 folder levels deep
+- Lowercase alphanumeric, hyphens, underscores
+
+## Limits (txtscape-mcp, current)
+
+  File size:          <= 1MB (1048576 bytes)
+  Nesting depth:      <= 10 levels
+  Folder name length: <= 50 characters
+  Search matches:     <= 100 results
+
+## Limits (original txtscape server)
+
+  File size:              <= 100KB (102400 bytes)   | 413 Payload Too Large
+  Nesting depth:          <= 10 levels              | 400 Bad Request
+  Folder name length:     <= 10 characters          | 400 Bad Request
+  Subfolders per folder:  <= 10                     | 400 Bad Request
+  Files per folder:       <= 100                    | 400 Bad Request
+
+## Path normalization
+
+validatePath() normalizes before validation:
+- Trims leading/trailing slashes
+- Collapses double slashes
+- Then validates each segment

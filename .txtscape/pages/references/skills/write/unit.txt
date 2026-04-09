@@ -1,0 +1,33 @@
+# Unit Tests
+
+## Scope
+
+Test a single function or method in isolation. All external dependencies
+(DB, HTTP, filesystem) are mocked via interfaces.
+
+## Mocking Strategy
+
+Functions under test accept interfaces, not concrete types. Mock with simple
+structs that implement the interface and return configurable values/errors.
+
+## What to unit test
+
+- Validation functions: path parsing, username validation, filename validation
+- Pure logic: directory listing generation, path splitting, size checking
+- Handler logic: with mocked stores — correct status codes, correct response bodies
+- Token generation: produces hex strings of expected length
+- Password hashing: bcrypt round-trip
+
+## What NOT to unit test
+
+- Database queries (that's integration testing)
+- HTTP routing (that's integration testing)
+- Third-party library internals
+
+## File placement
+
+Same package as the code:
+- internal/auth/auth.go -> internal/auth/auth_test.go
+- internal/pages/path.go -> internal/pages/path_test.go
+
+No build tags needed — unit tests run by default with go test ./...

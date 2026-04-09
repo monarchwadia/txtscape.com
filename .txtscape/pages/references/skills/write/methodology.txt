@@ -1,0 +1,54 @@
+# Methodology: Walking Skeleton + Red/Green TDD
+
+This is the core discipline. Every piece of code in txtscape is built this way.
+
+## The Walking Skeleton
+
+Before building any feature fully, build the thinnest possible end-to-end slice
+through all layers. Prove the wiring works before adding logic.
+
+### Example: building a feature
+
+Phase 1 — Steel thread (skeleton):
+- Write ONE test that proves the plumbing works (endpoint exists, returns 200)
+- Write the dumbest code that passes it (hardcoded response)
+- Run it. It passes. The skeleton stands.
+
+Phase 2 — Fill in the bones, one at a time:
+- RED:   TestSignup_ValidInput_AllowNewUsers_CreatesUserInDB
+- GREEN: Add parsing + DB insert
+- RED:   TestSignup_DuplicateUsername_PreventImpersonation_Returns409
+- GREEN: Add unique check
+Each RED/GREEN cycle is ONE test and ONE small code change.
+
+## Red/Green/Refactor Cycle
+
+RED: Write exactly ONE failing test. Run it. Confirm it fails.
+GREEN: Write the simplest code that passes. Run it. Confirm it passes.
+REFACTOR: Clean up only if actively bad. Run tests again.
+
+Rules:
+- Never write production code without a failing test demanding it
+- Never write more than one test before making it pass
+- Never skip running the tests between steps
+
+## Why this matters for LLMs
+
+LLMs are tempted to generate entire files at once. This fails because:
+1. Compounding errors: mistake in line 20 cascades to lines 50, 80, 120
+2. No verification boundary: you don't know which part broke
+3. Hard to debug: "the whole file is wrong" vs "this one test fails"
+
+The stepwise approach:
+1. Each step is small enough to get right
+2. Tests verify correctness at each step
+3. Errors are caught immediately
+4. The user can course-correct early
+
+## Ordering principle
+
+Build from the inside out:
+1. Pure functions first (validation, parsing — no deps, easy to test)
+2. Store interfaces + implementations (database/filesystem layer)
+3. Handlers (HTTP/MCP layer that calls the store)
+4. Wiring (main.go connecting everything)

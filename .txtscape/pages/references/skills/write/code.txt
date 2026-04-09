@@ -1,0 +1,34 @@
+# Production Code Conventions
+
+## Architecture
+
+Single Go binary. Zero external dependencies for txtscape-mcp.
+Original txtscape server used PostgreSQL + Railway deployment.
+
+## Handler Pattern
+
+Handlers are closures that accept interfaces:
+
+  func handleSignup(store UserStore) http.HandlerFunc {
+      return func(w http.ResponseWriter, r *http.Request) { ... }
+  }
+
+## Error Responses
+
+Plain text errors:
+
+  http.Error(w, "username already taken", http.StatusConflict)
+
+## Configuration
+
+Environment variables only (PORT, DATABASE_URL).
+
+## Code Style
+
+- No global variables except in main()
+- Return errors, don't panic
+- Use context.Context for all DB and HTTP operations
+- log.Printf for logging (no logging framework)
+- No comments on obvious code. Comment non-obvious business logic
+- Always parameterized queries ($1, $2). Never interpolate user input into SQL
+- No external test deps — stdlib testing only

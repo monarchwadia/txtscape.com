@@ -1,0 +1,52 @@
+# Test Conventions
+
+Shared across all test levels (unit, integration, E2E).
+
+## Test Naming
+
+  TestSubject_Scenario_BusinessReason_Expected
+
+The business reason is the key differentiator. It answers "why does this test exist?"
+
+Examples:
+- TestHashPassword_EmptyInput_PreventBlankPasswords_ReturnsError
+- TestSignup_DuplicateUsername_PreventImpersonation_Returns409
+- TestPutPage_11LevelsDeep_Enforce10LevelLimit_Returns400
+
+## Test Documentation
+
+Every test MUST have a structured comment block:
+
+  // Business context: Why this constraint exists.
+  // Scenario: What input or action is being tested.
+  // Expected: What the correct outcome is.
+
+## Test Structure
+
+Use Go stdlib testing only. No testify, no gomock, no external test deps.
+
+  func TestSubject_Scenario_Reason_Expected(t *testing.T) {
+      // Arrange
+      // Act
+      // Assert
+  }
+
+## Table-Driven Tests
+
+Use when testing multiple variations of the same logic. Each case includes
+a reason field explaining why the case exists.
+
+## Edge Cases to Always Consider
+
+- Empty strings and nil inputs
+- Boundary values (exactly at the limit)
+- Off-by-one (one past the limit)
+- Invalid characters
+- Path traversal attempts (../, ..%2f)
+- Unicode / non-ASCII
+
+## File Placement
+
+- Unit tests: same package, *_test.go (no build tag)
+- Integration tests: same package, *_integration_test.go with //go:build integration
+- E2E tests: e2e/ directory with //go:build e2e

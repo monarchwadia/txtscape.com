@@ -7,9 +7,20 @@ description: "Write code or tests for txtscape. USE WHEN: user says 'write', 'te
 
 One entry point for all code and test writing in the txtscape project. Read [Project.md](../../Project.md) for full project context.
 
-## Step 1: Narrate what you're about to do
+## Step 1: Check project memory
 
-Before writing anything, tell the user what you detected and decided:
+Before writing anything, check txtscape for relevant decisions and patterns:
+
+1. Call `search_pages` with the topic you're about to work on (e.g. "auth", "validation", "handler")
+2. Call `list_pages` on `decisions/` and `patterns/` to see what constraints exist
+3. Read any relevant pages with `get_page`
+4. Follow any constraints or patterns found — do not contradict recorded decisions
+
+If txtscape has no pages yet, skip this step.
+
+## Step 2: Narrate what you're about to do
+
+Before writing anything, tell the user what you detected and decided (include any txtscape findings):
 
 ```
 Detected: auth.go is open → writing unit tests for auth
@@ -20,15 +31,15 @@ Approach: red/green TDD, starting with the simplest case
 
 If ambiguous, ask using the ask-questions tool.
 
-## Step 2: Route to the right mode
+## Step 3: Route to the right mode
 
-| User says | Mode | Reference |
+| User says | Mode | txtscape reference |
 |---|---|---|
 | `/write tests` | Auto-detect level from open file | See routing below |
-| `/write unit tests` | Unit | [unit.md](references/unit.md) |
-| `/write integration tests` | Integration | [integration.md](references/integration.md) |
-| `/write e2e` | E2E | [e2e.md](references/e2e.md) |
-| `/write handler`, `/write code`, `/write migration` | Production code | [code.md](references/code.md) |
+| `/write unit tests` | Unit | `get_page` → `references/skills/write/unit.txt` |
+| `/write integration tests` | Integration | `get_page` → `references/skills/write/integration.txt` |
+| `/write e2e` | E2E | `get_page` → `references/skills/write/e2e.txt` |
+| `/write handler`, `/write code`, `/write migration` | Production code | `get_page` → `references/skills/write/code.txt` |
 | `/write plan` | Preview only — describe what you'd do, don't act | All references as needed |
 | `/write what's missing` | Gap analysis — scan code vs tests, find holes | All references as needed |
 
@@ -41,9 +52,9 @@ If ambiguous, ask using the ask-questions tool.
 5. Open file is a source `.go` file → unit tests for that file
 6. Otherwise → ask
 
-## Step 3: Follow the methodology
+## Step 4: Follow the methodology
 
-**This is the most important section. Read [methodology.md](references/methodology.md) before writing anything.**
+**This is the most important section. Use `get_page` → `references/skills/write/methodology.txt` before writing anything.**
 
 Summary:
 - **Walking skeleton first**: get the thinnest possible slice working end-to-end before adding depth
@@ -51,7 +62,7 @@ Summary:
 - **Stepwise**: never generate a whole file. Build it up one test-and-implementation pair at a time
 - **Verify each step**: after each green, confirm it compiles and passes before moving on
 
-## Step 4: Post-run summary
+## Step 5: Post-run summary
 
 After writing, output:
 
@@ -66,10 +77,21 @@ Next: TestValidatePassword (not yet written)
 Untested: CreateUser, GetUser
 ```
 
+## Step 6: Store what you learned
+
+If you made a decision or discovered a pattern worth remembering, store it in txtscape:
+
+- **Architectural decisions** → `put_page` to `decisions/<topic>.txt`
+- **Coding patterns** → `put_page` to `patterns/<topic>.txt`
+- **Boundaries/constraints** → `put_page` to `boundaries/<topic>.txt`
+
+Only store things that would help a future conversation avoid re-discovering the same insight.
+Do not store trivial implementation details.
+
 ## Shared conventions
 
-All modes share these:
-- [Test conventions](references/test-conventions.md) — naming, comments, structure
-- [Validation rules](references/validation-rules.md) — regexes, limits, status codes
-- [DB test setup](references/db-setup.md) — TestMain, per-package DB, cleanup
-- [Test helpers](references/test-helpers.md) — signUp, putPage, requireStatus
+All modes share these — load via txtscape `get_page`:
+- `references/skills/write/test-conventions.txt` — naming, comments, structure
+- `references/skills/write/validation-rules.txt` — regexes, limits, status codes
+- `references/skills/write/db-setup.txt` — TestMain, per-package DB, cleanup
+- `references/skills/write/test-helpers.txt` — signUp, putPage, requireStatus

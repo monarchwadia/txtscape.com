@@ -1,0 +1,32 @@
+# Test Helpers
+
+Shared helpers for integration and E2E tests. Live in test files, not production code.
+
+## HTTP Helpers (original txtscape server)
+
+  signUp(t, baseURL, username, password) string       — creates user, returns token
+  login(t, baseURL, username, password) string         — logs in, returns token
+  putPage(t, baseURL, path, token, content) *Response  — publishes page
+  deletePage(t, baseURL, path, token) *Response        — deletes page
+  getPage(t, baseURL, path) *Response                  — fetches page (no auth)
+  readBody(t, resp) string                             — reads and closes body
+  requireStatus(t, resp, wantCode)                     — fails test if status wrong
+
+## MCP Helpers (txtscape-mcp)
+
+  setupTestServer(t) *server           — creates server with temp dir + .txtscape/pages/
+  callMethod(s, method, params) resp   — sends JSON-RPC request
+  callTool(s, name, args) resp         — sends tools/call request
+  getTextContent(t, resp) string       — extracts text from tool response
+  isToolError(resp) bool               — checks if response is a tool error
+
+## Usage Pattern
+
+Helpers keep test bodies focused on the journey, not boilerplate:
+
+  func TestJourney_FullLifecycle(t *testing.T) {
+      s := setupTestServer(t)
+      resp := callTool(s, "put_page", map[string]string{"path": "test.txt", "content": "hello"})
+      text := getTextContent(t, resp)
+      // assert on text
+  }
