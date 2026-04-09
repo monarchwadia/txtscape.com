@@ -49,7 +49,16 @@ func main() {
 
 	// User pages — catch-all for /~ paths
 	tildeHandler := handler.HandleTilde(tokenStore, pageStore)
+
+	// MCP Streamable HTTP transport — must be registered before catch-all
+	mcpServer := mcp.NewServer(mux)
+	mcpHandler := mcpServer.HTTPHandler()
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/mcp" {
+			mcpHandler.ServeHTTP(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, "/~") {
 			tildeHandler(w, r)
 			return
@@ -62,9 +71,8 @@ func main() {
 		http.NotFound(w, r)
 	})
 
-	// MCP mode: run as stdio JSON-RPC server backed by the same mux
+	// MCP stdio mode: run as stdin/stdout JSON-RPC server backed by the same mux
 	if len(os.Args) > 1 && os.Args[1] == "mcp" {
-		mcpServer := mcp.NewServer(mux)
 		mcpServer.Serve()
 		return
 	}

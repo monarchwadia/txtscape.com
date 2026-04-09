@@ -417,3 +417,50 @@ func writeResponse(w io.Writer, resp jsonrpcResponse) {
 	data, _ := json.Marshal(resp)
 	fmt.Fprintf(w, "%s\n", data)
 }
+
+// HTTPHandler returns an http.Handler that implements the MCP Streamable HTTP transport.
+// POST /mcp receives JSON-RPC requests, returns application/json responses.
+// GET /mcp returns 405 (no server-initiated SSE streams).
+func (s *Server) HTTPHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			s.handleHTTPPost(w, r)
+		case http.MethodGet:
+			http.Error(w, "SSE stream not supported", http.StatusMethodNotAllowed)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+}
+
+func (s *Server) handleHTTPPost(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1024*1024))
+	if err != nil {
+		http.Error(w, "could not read body", http.StatusBadRequest)
+		return
+	}
+
+	var req jsonrpcRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(jsonrpcResponse{
+			JSONRPC: "2.0",
+			Error:   &jsonrpcError{Code: -32700, Message: "parse error"},
+		})
+		return
+	}
+
+	resp := s.handleRequest(req)
+
+	// Notifications return empty JSONRPC — respond with 202 Accepted
+	if resp.JSONRPC == "" {
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
+}

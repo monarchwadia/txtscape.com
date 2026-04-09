@@ -3,6 +3,8 @@ package mcp
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -373,5 +375,153 @@ func TestHandleToolCall_PutPage_MissingToken_ValidationFails_ReturnsToolError(t 
 	}
 	if result["isError"] != true {
 		t.Fatal("expected isError=true for missing token")
+	}
+}
+
+// --- Streamable HTTP transport tests ---
+
+func TestHTTPHandler_PostInitialize_StreamableHTTP_ReturnsJSON(t *testing.T) {
+	// Business context: MCP Streamable HTTP transport uses POST to send JSON-RPC.
+	// Scenario: POST an initialize request to /mcp.
+	// Expected: Returns application/json with server capabilities.
+	s := NewServer(fakeHandler())
+	handler := s.HTTPHandler()
+
+	body, _ := json.Marshal(jsonrpcRequest{
+		JSONRPC: "2.0",
+		ID:      json.RawMessage(`1`),
+		Method:  "initialize",
+	})
+
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("content-type = %q, want application/json", ct)
+	}
+
+	var resp jsonrpcResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %s", resp.Error.Message)
+	}
+	result := resp.Result.(map[string]any)
+	info := result["serverInfo"].(map[string]any)
+	if info["name"] != "txtscape" {
+		t.Fatalf("name = %v, want txtscape", info["name"])
+	}
+}
+
+func TestHTTPHandler_PostToolCall_StreamableHTTP_ReturnsToolResult(t *testing.T) {
+	// Business context: Tool calls via Streamable HTTP should work identically to stdio.
+	// Scenario: POST a get_page tool call.
+	// Expected: Returns the page content from the internal handler.
+	s := NewServer(fakeHandler())
+	handler := s.HTTPHandler()
+
+	body, _ := json.Marshal(jsonrpcRequest{
+		JSONRPC: "2.0",
+		ID:      json.RawMessage(`2`),
+		Method:  "tools/call",
+		Params: json.RawMessage(`{"name":"get_page","arguments":{"path":"/~alice/hello.txt"}}`),
+	})
+
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	var resp jsonrpcResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	result := resp.Result.(map[string]any)
+	content := result["content"].([]any)
+	first := content[0].(map[string]any)
+	if first["text"] != "hello from fake page" {
+		t.Fatalf("text = %q, want %q", first["text"], "hello from fake page")
+	}
+}
+
+func TestHTTPHandler_PostNotification_StreamableHTTP_Returns202(t *testing.T) {
+	// Business context: Notifications have no response, server returns 202 Accepted.
+	// Scenario: POST a notifications/initialized message.
+	// Expected: Returns 202 with no body.
+	s := NewServer(fakeHandler())
+	handler := s.HTTPHandler()
+
+	body, _ := json.Marshal(jsonrpcRequest{
+		JSONRPC: "2.0",
+		Method:  "notifications/initialized",
+	})
+
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202", w.Code)
+	}
+}
+
+func TestHTTPHandler_Get_StreamableHTTP_Returns405(t *testing.T) {
+	// Business context: We don't support server-initiated SSE streams.
+	// Scenario: GET /mcp.
+	// Expected: Returns 405 Method Not Allowed.
+	s := NewServer(fakeHandler())
+	handler := s.HTTPHandler()
+
+	req := httptest.NewRequest("GET", "/mcp", nil)
+	req.Header.Set("Accept", "text/event-stream")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want 405", w.Code)
+	}
+}
+
+func TestHTTPHandler_InvalidJSON_StreamableHTTP_ReturnsParseError(t *testing.T) {
+	// Business context: Malformed JSON should return a JSON-RPC parse error.
+	// Scenario: POST invalid JSON to /mcp.
+	// Expected: Returns JSON-RPC error with code -32700.
+	s := NewServer(fakeHandler())
+	handler := s.HTTPHandler()
+
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader("{invalid"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	var resp jsonrpcResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp.Error == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+	if resp.Error.Code != -32700 {
+		t.Fatalf("code = %d, want -32700", resp.Error.Code)
 	}
 }
