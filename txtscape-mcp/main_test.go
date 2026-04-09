@@ -512,6 +512,101 @@ func TestSearchPages_NoMatch_ReturnsMessage(t *testing.T) {
 	}
 }
 
+// --- Regex search tests ---
+
+func TestSearchPages_Regex_AlternationPattern_MatchesBoth(t *testing.T) {
+	// Business context: Agents need to search for related terms in one call,
+	// e.g. "(bcrypt|argon2)" to find any password hashing discussion.
+	// Scenario: Two pages with different keywords, regex alternation.
+	// Expected: Both pages found.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "crypto-a.txt",
+		"content": "We use bcrypt for hashing.",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path":    "crypto-b.txt",
+		"content": "We considered argon2 but chose not to.",
+	})
+
+	resp := callTool(s, "search_pages", map[string]any{
+		"query":   "(bcrypt|argon2)",
+		"isRegex": true,
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "crypto-a.txt") {
+		t.Error("regex should match crypto-a.txt")
+	}
+	if !strings.Contains(text, "crypto-b.txt") {
+		t.Error("regex should match crypto-b.txt")
+	}
+}
+
+func TestSearchPages_Regex_DotStar_MatchesPattern(t *testing.T) {
+	// Business context: Pattern matching like "TODO.*auth" finds TODO items
+	// about authentication specifically.
+	// Scenario: File with "TODO: fix auth flow", search "TODO.*auth".
+	// Expected: Match found.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "todos.txt",
+		"content": "TODO: fix auth flow\nTODO: update docs",
+	})
+
+	resp := callTool(s, "search_pages", map[string]any{
+		"query":   "TODO.*auth",
+		"isRegex": true,
+	})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "todos.txt") {
+		t.Error("regex should match todos.txt")
+	}
+	if !strings.Contains(text, "auth") {
+		t.Error("result should contain the matching line")
+	}
+}
+
+func TestSearchPages_Regex_InvalidPattern_ReturnsError(t *testing.T) {
+	// Business context: Bad regex should produce a clear error, not a panic.
+	// Scenario: Invalid regex pattern.
+	// Expected: Error about invalid regex.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "dummy.txt", "content": "x",
+	})
+
+	resp := callTool(s, "search_pages", map[string]any{
+		"query":   "[invalid",
+		"isRegex": true,
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error for invalid regex")
+	}
+}
+
+func TestSearchPages_PlainStillWorks_WhenRegexFalse(t *testing.T) {
+	// Business context: Default substring search must still work when isRegex=false or omitted.
+	// Scenario: Search with special regex chars but isRegex=false.
+	// Expected: Treats query as literal text, finds match.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "special.txt",
+		"content": "size limit is 100KB (max).",
+	})
+
+	resp := callTool(s, "search_pages", map[string]any{
+		"query":   "(max)",
+		"isRegex": false,
+	})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "special.txt") {
+		t.Error("plain search should still find literal match")
+	}
+}
+
 // --- Path validation tests ---
 
 func TestPutPage_PathTraversal_PreventEscape_ReturnsError(t *testing.T) {
@@ -777,6 +872,320 @@ func TestSearchPages_MatchesFilename_DiscoverByName_ReturnsResult(t *testing.T) 
 	text := getTextContent(t, resp)
 	if !strings.Contains(text, "arch/tools.txt") {
 		t.Errorf("expected filename match for 'tools', got: %s", text)
+	}
+}
+
+// --- move_page tests ---
+
+func TestListPages_Recursive_FullTree_ReturnsAllFiles(t *testing.T) {
+	// Business context: Agents exploring memory must call list_pages repeatedly
+	// to walk the tree. A recursive option returns the full tree in one call,
+	// saving many round trips and giving complete situational awareness.
+	// Scenario: Create files in nested folders, list with recursive=true.
+	// Expected: All files shown in tree format with relative paths.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "root.txt", "content": "# Root",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "decisions/flat-files.txt", "content": "# Flat files",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "decisions/stdio.txt", "content": "# Stdio",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "patterns/errors/retry.txt", "content": "# Retry",
+	})
+
+	resp := callTool(s, "list_pages", map[string]any{
+		"path":      "",
+		"recursive": true,
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+
+	// Should contain all 4 files with full relative paths
+	for _, want := range []string{"root.txt", "decisions/flat-files.txt", "decisions/stdio.txt", "patterns/errors/retry.txt"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("recursive listing missing %q, got:\n%s", want, text)
+		}
+	}
+}
+
+func TestListPages_RecursiveSubfolder_OnlyThatSubtree(t *testing.T) {
+	// Business context: Recursive listing of a subfolder should only show
+	// files within that subtree, not the entire memory.
+	// Scenario: Create files in multiple folders, list one recursively.
+	// Expected: Only files under that folder appear.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "decisions/a.txt", "content": "# A",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "decisions/sub/b.txt", "content": "# B",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "patterns/c.txt", "content": "# C",
+	})
+
+	resp := callTool(s, "list_pages", map[string]any{
+		"path":      "decisions",
+		"recursive": true,
+	})
+	text := getTextContent(t, resp)
+
+	if !strings.Contains(text, "a.txt") {
+		t.Error("should contain a.txt")
+	}
+	if !strings.Contains(text, "sub/b.txt") {
+		t.Error("should contain sub/b.txt")
+	}
+	if strings.Contains(text, "c.txt") {
+		t.Error("should NOT contain c.txt from patterns/")
+	}
+}
+
+func TestListPages_RecursiveEmpty_ReturnsEmpty(t *testing.T) {
+	// Business context: Recursive on empty root should still return empty message.
+	// Scenario: Recursive list on empty memory.
+	// Expected: "(empty)" message.
+	s := setupTestServer(t)
+	resp := callTool(s, "list_pages", map[string]any{
+		"recursive": true,
+	})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "empty") {
+		t.Errorf("expected 'empty' message, got: %s", text)
+	}
+}
+
+// --- append_page tests ---
+
+func TestAppendPage_ExistingFile_AppendsContent(t *testing.T) {
+	// Business context: Log-style pages (changelogs, session notes) need append
+	// without the read-modify-write cycle of get+put.
+	// Scenario: Create a page, append to it.
+	// Expected: Content is concatenated.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "log.txt",
+		"content": "line 1\n",
+	})
+
+	resp := callTool(s, "append_page", map[string]string{
+		"path":    "log.txt",
+		"content": "line 2\n",
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "appended") {
+		t.Errorf("expected 'appended' in response, got: %s", text)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(s.pagesRoot(), "log.txt"))
+	if string(data) != "line 1\nline 2\n" {
+		t.Errorf("content = %q, want %q", string(data), "line 1\nline 2\n")
+	}
+}
+
+func TestAppendPage_NewFile_CreatesFile(t *testing.T) {
+	// Business context: Appending to a non-existent page should create it,
+	// so agents don't need to check existence first.
+	// Scenario: Append to a page that doesn't exist.
+	// Expected: File created with the appended content.
+	s := setupTestServer(t)
+	resp := callTool(s, "append_page", map[string]string{
+		"path":    "new-log.txt",
+		"content": "first entry\n",
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "created") {
+		t.Errorf("expected 'created' for new file append, got: %s", text)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(s.pagesRoot(), "new-log.txt"))
+	if string(data) != "first entry\n" {
+		t.Errorf("content = %q, want %q", string(data), "first entry\n")
+	}
+}
+
+func TestAppendPage_ExceedsMaxSize_ReturnsError(t *testing.T) {
+	// Business context: 1MB limit must be enforced for append too, counting
+	// existing content + new content.
+	// Scenario: File near max size, append pushes it over.
+	// Expected: Error about size limit.
+	s := setupTestServer(t)
+	// Create a file that's almost at max
+	callTool(s, "put_page", map[string]string{
+		"path":    "big.txt",
+		"content": strings.Repeat("x", maxSize-10),
+	})
+
+	resp := callTool(s, "append_page", map[string]string{
+		"path":    "big.txt",
+		"content": strings.Repeat("y", 20),
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error when append would exceed max size")
+	}
+}
+
+func TestAppendPage_EmptyContent_ReturnsError(t *testing.T) {
+	// Business context: Appending nothing is pointless.
+	// Scenario: Append with empty content.
+	// Expected: Error.
+	s := setupTestServer(t)
+	resp := callTool(s, "append_page", map[string]string{
+		"path":    "log.txt",
+		"content": "",
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error for empty content")
+	}
+}
+
+func TestMovePage_SimpleRename_RelocatePage_MovesFile(t *testing.T) {
+	// Business context: Agents need to reorganize memory without the 3-call
+	// get+put+delete dance. move_page does it atomically in one call.
+	// Scenario: Create a page, move it to a new path.
+	// Expected: Old path gone, new path has the content.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "old-name.txt",
+		"content": "moveable content",
+	})
+
+	resp := callTool(s, "move_page", map[string]string{
+		"from": "old-name.txt",
+		"to":   "new-name.txt",
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "moved") {
+		t.Errorf("expected 'moved' in response, got: %s", text)
+	}
+
+	// Old path should not exist
+	getResp := callTool(s, "get_page", map[string]string{"path": "old-name.txt"})
+	if !isToolError(getResp) {
+		t.Error("old path should not exist after move")
+	}
+
+	// New path should have content
+	getResp = callTool(s, "get_page", map[string]string{"path": "new-name.txt"})
+	if isToolError(getResp) {
+		t.Fatalf("new path should exist: %s", getTextContent(t, getResp))
+	}
+	if getTextContent(t, getResp) != "moveable content" {
+		t.Error("content should be preserved after move")
+	}
+}
+
+func TestMovePage_AcrossFolders_RelocatePage_CreatesDestFolder(t *testing.T) {
+	// Business context: Moving pages between folders (e.g. from drafts/ to decisions/)
+	// should auto-create destination folders, just like put_page does.
+	// Scenario: Move from root to a nested folder that doesn't exist.
+	// Expected: Destination folder created, file moved.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "draft.txt",
+		"content": "draft content",
+	})
+
+	resp := callTool(s, "move_page", map[string]string{
+		"from": "draft.txt",
+		"to":   "decisions/finalized.txt",
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+
+	// Verify new location
+	data, err := os.ReadFile(filepath.Join(s.pagesRoot(), "decisions", "finalized.txt"))
+	if err != nil {
+		t.Fatalf("file not at new location: %v", err)
+	}
+	if string(data) != "draft content" {
+		t.Error("content should be preserved")
+	}
+}
+
+func TestMovePage_SourceNotFound_ReturnsError(t *testing.T) {
+	// Business context: Moving a non-existent page should fail clearly.
+	// Scenario: Move a page that doesn't exist.
+	// Expected: Error with "not found" message.
+	s := setupTestServer(t)
+	resp := callTool(s, "move_page", map[string]string{
+		"from": "ghost.txt",
+		"to":   "target.txt",
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error for missing source")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "not found") {
+		t.Errorf("expected 'not found', got: %s", text)
+	}
+}
+
+func TestMovePage_DestinationExists_PreventOverwrite_ReturnsError(t *testing.T) {
+	// Business context: Accidental overwrites via move are dangerous.
+	// If the destination already exists, refuse the move.
+	// Scenario: Both source and destination exist.
+	// Expected: Error indicating destination exists.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "source.txt",
+		"content": "source",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path":    "dest.txt",
+		"content": "existing",
+	})
+
+	resp := callTool(s, "move_page", map[string]string{
+		"from": "source.txt",
+		"to":   "dest.txt",
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error when destination exists")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "already exists") {
+		t.Errorf("expected 'already exists', got: %s", text)
+	}
+}
+
+func TestMovePage_CleansUpEmptySourceFolder(t *testing.T) {
+	// Business context: After moving the last file out of a folder, the empty
+	// folder should be cleaned up (same as delete_page behavior).
+	// Scenario: Move the only file out of a folder.
+	// Expected: Source folder no longer exists.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "old-folder/only-file.txt",
+		"content": "lonely",
+	})
+
+	callTool(s, "move_page", map[string]string{
+		"from": "old-folder/only-file.txt",
+		"to":   "new-home.txt",
+	})
+
+	// old-folder should be gone
+	resp := callTool(s, "list_pages", map[string]string{})
+	text := getTextContent(t, resp)
+	if strings.Contains(text, "old-folder") {
+		t.Errorf("empty source folder should be cleaned up, got: %s", text)
 	}
 }
 

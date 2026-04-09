@@ -207,6 +207,24 @@ func toolDefinitions() []map[string]any {
 			},
 		},
 		{
+			"name":        "append_page",
+			"description": "Append content to an existing .txt page in project memory. Creates the page if it doesn't exist. Max 1MB total size.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"path": map[string]any{
+						"type":        "string",
+						"description": "Page path relative to .txtscape/pages/. Must end in .txt.",
+					},
+					"content": map[string]any{
+						"type":        "string",
+						"description": "Text to append to the end of the page.",
+					},
+				},
+				"required": []string{"path", "content"},
+			},
+		},
+		{
 			"name":        "delete_page",
 			"description": "Delete a .txt page from project memory.",
 			"inputSchema": map[string]any{
@@ -221,8 +239,26 @@ func toolDefinitions() []map[string]any {
 			},
 		},
 		{
+			"name":        "move_page",
+			"description": "Move/rename a .txt page in project memory. Destination folders are created automatically. Fails if destination already exists.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"from": map[string]any{
+						"type":        "string",
+						"description": "Current page path. Must end in .txt.",
+					},
+					"to": map[string]any{
+						"type":        "string",
+						"description": "New page path. Must end in .txt. Folder names: lowercase alphanumeric/hyphens/underscores, max 50 chars. Max 10 levels deep.",
+					},
+				},
+				"required": []string{"from", "to"},
+			},
+		},
+		{
 			"name":        "list_pages",
-			"description": "List files and folders in project memory. Returns the first line of each file as a preview. Pass empty path or '/' to list the root.",
+			"description": "List files and folders in project memory. Returns the first line of each file as a preview. Pass empty path or '/' to list the root. Set recursive=true to return the full tree.",
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -230,18 +266,26 @@ func toolDefinitions() []map[string]any {
 						"type":        "string",
 						"description": "Folder path to list, or empty/'/' for root. Folder names: lowercase alphanumeric/hyphens/underscores, max 50 chars. Example: decisions",
 					},
+					"recursive": map[string]any{
+						"type":        "boolean",
+						"description": "If true, list all files in all subfolders recursively. Default: false.",
+					},
 				},
 			},
 		},
 		{
 			"name":        "search_pages",
-			"description": "Search across all pages in project memory. Returns matching lines with surrounding context. Returns up to 100 matches, case-insensitive.",
+			"description": "Search across all pages in project memory. Returns matching lines with surrounding context. Returns up to 100 matches, case-insensitive. Supports regex with isRegex=true.",
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"query": map[string]any{
 						"type":        "string",
-						"description": "Text to search for (case-insensitive). Returns up to 100 matches with 1 line of surrounding context each.",
+						"description": "Text or regex pattern to search for (case-insensitive). Returns up to 100 matches with 1 line of surrounding context each.",
+					},
+					"isRegex": map[string]any{
+						"type":        "boolean",
+						"description": "If true, treat query as a Go regex pattern. Default: false (substring match).",
 					},
 				},
 				"required": []string{"query"},
@@ -261,10 +305,14 @@ func (s *server) handleToolCall(req jsonrpcRequest) jsonrpcResponse {
 	}
 
 	switch params.Name {
+	case "move_page":
+		return s.handleMovePage(req.ID, params.Arguments)
 	case "get_page":
 		return s.handleGetPage(req.ID, params.Arguments)
 	case "put_page":
 		return s.handlePutPage(req.ID, params.Arguments)
+	case "append_page":
+		return s.handleAppendPage(req.ID, params.Arguments)
 	case "delete_page":
 		return s.handleDeletePage(req.ID, params.Arguments)
 	case "list_pages":
@@ -347,6 +395,52 @@ func (s *server) handlePutPage(id json.RawMessage, args json.RawMessage) jsonrpc
 	return toolSuccess(id, "page created: "+a.Path)
 }
 
+func (s *server) handleAppendPage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		Path    string `json:"path"`
+		Content string `json:"content"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return toolError(id, "invalid arguments")
+	}
+	if a.Path == "" {
+		return toolError(id, "path is required")
+	}
+	if a.Content == "" {
+		return toolError(id, "content is required")
+	}
+	clean, err := validatePath(a.Path)
+	if err != nil {
+		return toolError(id, err.Error())
+	}
+
+	fullPath := filepath.Join(s.pagesRoot(), filepath.FromSlash(clean))
+
+	// Read existing content if file exists
+	existing, readErr := os.ReadFile(fullPath)
+	isNew := os.IsNotExist(readErr)
+	if readErr != nil && !isNew {
+		return toolError(id, "reading page: "+readErr.Error())
+	}
+
+	newContent := append(existing, []byte(a.Content)...)
+	if len(newContent) > maxSize {
+		return toolError(id, fmt.Sprintf("appended content would exceed maximum size of %d bytes", maxSize))
+	}
+
+	dir := filepath.Dir(fullPath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return toolError(id, "creating directory: "+err.Error())
+	}
+	if err := os.WriteFile(fullPath, newContent, 0o644); err != nil {
+		return toolError(id, "writing page: "+err.Error())
+	}
+	if isNew {
+		return toolSuccess(id, "page created: "+a.Path)
+	}
+	return toolSuccess(id, "page appended: "+a.Path)
+}
+
 func (s *server) handleDeletePage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
 	var a struct {
 		Path string `json:"path"`
@@ -384,9 +478,68 @@ func (s *server) handleDeletePage(id json.RawMessage, args json.RawMessage) json
 	return toolSuccess(id, "page deleted: "+a.Path)
 }
 
+func (s *server) handleMovePage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		From string `json:"from"`
+		To   string `json:"to"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return toolError(id, "invalid arguments")
+	}
+	if a.From == "" {
+		return toolError(id, "from is required")
+	}
+	if a.To == "" {
+		return toolError(id, "to is required")
+	}
+	cleanFrom, err := validatePath(a.From)
+	if err != nil {
+		return toolError(id, "from: "+err.Error())
+	}
+	cleanTo, err := validatePath(a.To)
+	if err != nil {
+		return toolError(id, "to: "+err.Error())
+	}
+
+	fromPath := filepath.Join(s.pagesRoot(), filepath.FromSlash(cleanFrom))
+	toPath := filepath.Join(s.pagesRoot(), filepath.FromSlash(cleanTo))
+
+	// Source must exist
+	if _, err := os.Stat(fromPath); os.IsNotExist(err) {
+		return toolError(id, "page not found: "+a.From)
+	}
+	// Destination must NOT exist
+	if _, err := os.Stat(toPath); err == nil {
+		return toolError(id, "destination already exists: "+a.To)
+	}
+
+	// Create destination directory
+	if err := os.MkdirAll(filepath.Dir(toPath), 0o755); err != nil {
+		return toolError(id, "creating directory: "+err.Error())
+	}
+	// Move the file
+	if err := os.Rename(fromPath, toPath); err != nil {
+		return toolError(id, "moving page: "+err.Error())
+	}
+
+	// Clean up empty source parent directories
+	dir := filepath.Dir(fromPath)
+	for dir != s.pagesRoot() {
+		entries, err := os.ReadDir(dir)
+		if err != nil || len(entries) > 0 {
+			break
+		}
+		os.Remove(dir)
+		dir = filepath.Dir(dir)
+	}
+
+	return toolSuccess(id, "page moved: "+a.From+" → "+a.To)
+}
+
 func (s *server) handleListPages(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
 	var a struct {
-		Path string `json:"path"`
+		Path      string `json:"path"`
+		Recursive bool   `json:"recursive"`
 	}
 	if args != nil {
 		json.Unmarshal(args, &a)
@@ -405,6 +558,10 @@ func (s *server) handleListPages(id json.RawMessage, args json.RawMessage) jsonr
 			return toolError(id, fmt.Sprintf("path exceeds maximum depth of %d levels", maxDepth))
 		}
 		dirPath = filepath.Join(dirPath, filepath.FromSlash(a.Path))
+	}
+
+	if a.Recursive {
+		return s.listPagesRecursive(id, dirPath)
 	}
 
 	entries, err := os.ReadDir(dirPath)
@@ -431,9 +588,28 @@ func (s *server) handleListPages(id json.RawMessage, args json.RawMessage) jsonr
 	return toolSuccess(id, buf.String())
 }
 
+func (s *server) listPagesRecursive(id json.RawMessage, root string) jsonrpcResponse {
+	var buf strings.Builder
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".txt") {
+			return nil
+		}
+		relPath, _ := filepath.Rel(root, path)
+		relPath = filepath.ToSlash(relPath)
+		preview := firstLine(path)
+		buf.WriteString(fmt.Sprintf("📄 %s  —  %s\n", relPath, preview))
+		return nil
+	})
+	if buf.Len() == 0 {
+		return toolSuccess(id, "(empty directory)")
+	}
+	return toolSuccess(id, buf.String())
+}
+
 func (s *server) handleSearchPages(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
 	var a struct {
-		Query string `json:"query"`
+		Query   string `json:"query"`
+		IsRegex bool   `json:"isRegex"`
 	}
 	if err := json.Unmarshal(args, &a); err != nil {
 		return toolError(id, "invalid arguments")
@@ -442,7 +618,19 @@ func (s *server) handleSearchPages(id json.RawMessage, args json.RawMessage) jso
 		return toolError(id, "query is required")
 	}
 
-	query := strings.ToLower(a.Query)
+	// Build the match function
+	var matches func(string) bool
+	if a.IsRegex {
+		re, err := regexp.Compile("(?i)" + a.Query)
+		if err != nil {
+			return toolError(id, "invalid regex: "+err.Error())
+		}
+		matches = func(s string) bool { return re.MatchString(s) }
+	} else {
+		query := strings.ToLower(a.Query)
+		matches = func(s string) bool { return strings.Contains(strings.ToLower(s), query) }
+	}
+
 	var results strings.Builder
 	matchCount := 0
 
@@ -459,7 +647,7 @@ func (s *server) handleSearchPages(id json.RawMessage, args json.RawMessage) jso
 		relPath = filepath.ToSlash(relPath)
 
 		// Match against the file path itself
-		if strings.Contains(strings.ToLower(relPath), query) {
+		if matches(relPath) {
 			if matchCount > 0 {
 				results.WriteString("\n")
 			}
@@ -474,7 +662,7 @@ func (s *server) handleSearchPages(id json.RawMessage, args json.RawMessage) jso
 		lines := strings.Split(string(data), "\n")
 
 		for i, line := range lines {
-			if strings.Contains(strings.ToLower(line), query) {
+			if matches(line) {
 				if matchCount > 0 {
 					results.WriteString("\n")
 				}
