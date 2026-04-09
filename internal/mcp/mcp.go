@@ -258,7 +258,7 @@ func (s *Server) handleGetPage(id json.RawMessage, args json.RawMessage) jsonrpc
 	rec := s.callInternal("GET", a.Path, nil, nil)
 	body := rec.Body.String()
 
-	if rec.Code >= 400 {
+	if rec.Code < 200 || rec.Code >= 300 {
 		return toolError(id, fmt.Sprintf("HTTP %d: %s", rec.Code, strings.TrimSpace(body)))
 	}
 
@@ -289,7 +289,7 @@ func (s *Server) handlePutPage(id json.RawMessage, args json.RawMessage) jsonrpc
 	})
 	body := rec.Body.String()
 
-	if rec.Code >= 400 {
+	if rec.Code < 200 || rec.Code >= 300 {
 		return toolError(id, fmt.Sprintf("HTTP %d: %s", rec.Code, strings.TrimSpace(body)))
 	}
 
@@ -316,7 +316,7 @@ func (s *Server) handleDeletePage(id json.RawMessage, args json.RawMessage) json
 	})
 	body := rec.Body.String()
 
-	if rec.Code >= 400 {
+	if rec.Code < 200 || rec.Code >= 300 {
 		return toolError(id, fmt.Sprintf("HTTP %d: %s", rec.Code, strings.TrimSpace(body)))
 	}
 
@@ -344,7 +344,7 @@ func (s *Server) handleSignup(id json.RawMessage, args json.RawMessage) jsonrpcR
 	})
 	body := rec.Body.String()
 
-	if rec.Code >= 400 {
+	if rec.Code < 200 || rec.Code >= 300 {
 		return toolError(id, fmt.Sprintf("HTTP %d: %s", rec.Code, strings.TrimSpace(body)))
 	}
 
@@ -372,7 +372,7 @@ func (s *Server) handleLogin(id json.RawMessage, args json.RawMessage) jsonrpcRe
 	})
 	body := rec.Body.String()
 
-	if rec.Code >= 400 {
+	if rec.Code < 200 || rec.Code >= 300 {
 		return toolError(id, fmt.Sprintf("HTTP %d: %s", rec.Code, strings.TrimSpace(body)))
 	}
 
