@@ -1,0 +1,8 @@
+{
+  "search.exclude": {
+    ".txtscape/pages/**": true
+  },
+  "files.watcherExclude": {
+    ".txtscape/pages/**": true
+  }
+}

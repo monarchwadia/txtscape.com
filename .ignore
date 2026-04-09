@@ -1,0 +1,4 @@
+# Exclude txtscape project memory from code search.
+# These files are committed to git but shouldn't appear in code search results.
+# Respected by ripgrep (rg), The Silver Searcher (ag), and fd.
+.txtscape/pages/

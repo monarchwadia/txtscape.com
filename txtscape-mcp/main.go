@@ -60,6 +60,12 @@ func validatePath(raw string) (string, error) {
 		return "", fmt.Errorf("path must not contain '..'")
 	}
 
+	// Normalize: trim slashes, collapse double slashes
+	raw = strings.Trim(raw, "/")
+	for strings.Contains(raw, "//") {
+		raw = strings.ReplaceAll(raw, "//", "/")
+	}
+
 	parts := strings.Split(raw, "/")
 	fileName := parts[len(parts)-1]
 	folderParts := parts[:len(parts)-1]
@@ -74,7 +80,7 @@ func validatePath(raw string) (string, error) {
 
 	for _, p := range folderParts {
 		if !folderPartRe.MatchString(p) {
-			return "", fmt.Errorf("invalid folder name %q: must be 1-10 lowercase alphanumeric/hyphens/underscores", p)
+			return "", fmt.Errorf("invalid folder name %q: must be 1-50 lowercase alphanumeric/hyphens/underscores", p)
 		}
 	}
 
@@ -325,6 +331,9 @@ func (s *server) handlePutPage(id json.RawMessage, args json.RawMessage) jsonrpc
 	}
 
 	fullPath := filepath.Join(s.pagesRoot(), filepath.FromSlash(clean))
+	_, existErr := os.Stat(fullPath)
+	isUpdate := existErr == nil
+
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return toolError(id, "creating directory: "+err.Error())
@@ -332,7 +341,10 @@ func (s *server) handlePutPage(id json.RawMessage, args json.RawMessage) jsonrpc
 	if err := os.WriteFile(fullPath, []byte(a.Content), 0o644); err != nil {
 		return toolError(id, "writing page: "+err.Error())
 	}
-	return toolSuccess(id, "page saved: "+a.Path)
+	if isUpdate {
+		return toolSuccess(id, "page updated: "+a.Path)
+	}
+	return toolSuccess(id, "page created: "+a.Path)
 }
 
 func (s *server) handleDeletePage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
@@ -357,6 +369,18 @@ func (s *server) handleDeletePage(id json.RawMessage, args json.RawMessage) json
 		}
 		return toolError(id, "deleting page: "+err.Error())
 	}
+
+	// Clean up empty parent directories up to pages root
+	dir := filepath.Dir(fullPath)
+	for dir != s.pagesRoot() {
+		entries, err := os.ReadDir(dir)
+		if err != nil || len(entries) > 0 {
+			break
+		}
+		os.Remove(dir)
+		dir = filepath.Dir(dir)
+	}
+
 	return toolSuccess(id, "page deleted: "+a.Path)
 }
 
@@ -433,6 +457,20 @@ func (s *server) handleSearchPages(id json.RawMessage, args json.RawMessage) jso
 
 		relPath, _ := filepath.Rel(s.pagesRoot(), path)
 		relPath = filepath.ToSlash(relPath)
+
+		// Match against the file path itself
+		if strings.Contains(strings.ToLower(relPath), query) {
+			if matchCount > 0 {
+				results.WriteString("\n")
+			}
+			preview := firstLine(path)
+			results.WriteString(fmt.Sprintf("--- %s (path match) ---\n%s\n", relPath, preview))
+			matchCount++
+			if matchCount >= 100 {
+				return fmt.Errorf("limit reached")
+			}
+		}
+
 		lines := strings.Split(string(data), "\n")
 
 		for i, line := range lines {

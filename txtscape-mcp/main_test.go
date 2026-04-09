@@ -204,8 +204,8 @@ func TestPutPage_NewFile_CreatesFile(t *testing.T) {
 		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
 	}
 	text := getTextContent(t, resp)
-	if !strings.Contains(text, "saved") {
-		t.Errorf("expected success message containing 'saved', got: %s", text)
+	if !strings.Contains(text, "created") {
+		t.Errorf("expected success message containing 'created', got: %s", text)
 	}
 
 	// Verify file exists on disk
@@ -656,6 +656,129 @@ func TestPutPage_BackslashPath_PreventWindowsPaths_ReturnsError(t *testing.T) {
 }
 
 // --- Unknown tool test ---
+
+func TestValidatePath_LeadingSlash_NormalizeFriendlyInput_Accepted(t *testing.T) {
+	// Business context: Agents may prepend '/' to paths. This should be
+	// silently normalized rather than producing a cryptic empty-folder error.
+	// Scenario: Path with leading slash.
+	// Expected: Normalized and accepted.
+	got, err := validatePath("/decisions/choice.txt")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if got != "decisions/choice.txt" {
+		t.Errorf("got %q, want %q", got, "decisions/choice.txt")
+	}
+}
+
+func TestValidatePath_TrailingSlash_NormalizeFriendlyInput_Accepted(t *testing.T) {
+	// Business context: Trailing slashes are a common typo. Should be
+	// normalized rather than failing with "invalid filename".
+	// Scenario: Path with trailing slash.
+	// Expected: Normalized and accepted.
+	got, err := validatePath("decisions/choice.txt/")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if got != "decisions/choice.txt" {
+		t.Errorf("got %q, want %q", got, "decisions/choice.txt")
+	}
+}
+
+func TestValidatePath_DoubleSlash_NormalizeFriendlyInput_Accepted(t *testing.T) {
+	// Business context: Double slashes from string concatenation are common.
+	// Should be collapsed rather than failing with empty folder name.
+	// Scenario: Path with double slashes.
+	// Expected: Normalized and accepted.
+	got, err := validatePath("decisions//choice.txt")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if got != "decisions/choice.txt" {
+		t.Errorf("got %q, want %q", got, "decisions/choice.txt")
+	}
+}
+
+func TestPutPage_NewFile_SignalCreated_ReturnsCreated(t *testing.T) {
+	// Business context: Agents need to know whether put_page created a new file
+	// or overwrote an existing one, to detect accidental overwrites.
+	// Scenario: Write a page that doesn't exist yet.
+	// Expected: Response says "created".
+	s := setupTestServer(t)
+	resp := callTool(s, "put_page", map[string]string{
+		"path":    "new.txt",
+		"content": "fresh content",
+	})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "created") {
+		t.Errorf("expected 'created' in response for new file, got: %s", text)
+	}
+}
+
+func TestPutPage_ExistingFile_SignalUpdated_ReturnsUpdated(t *testing.T) {
+	// Business context: Agents need to know when they're overwriting existing
+	// content. Distinct "updated" signal prevents silent data loss.
+	// Scenario: Write a page, then write it again with new content.
+	// Expected: Second response says "updated".
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "existing.txt",
+		"content": "original",
+	})
+	resp := callTool(s, "put_page", map[string]string{
+		"path":    "existing.txt",
+		"content": "replacement",
+	})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "updated") {
+		t.Errorf("expected 'updated' in response for existing file, got: %s", text)
+	}
+}
+
+func TestDeletePage_LastFileInFolder_CleanupEmptyParent_RemovesFolder(t *testing.T) {
+	// Business context: Ghost empty directories clutter list_pages and confuse
+	// agents into thinking content exists in a folder. After deleting the last
+	// file, the empty parent folders should be removed up to .txtscape/pages/.
+	// Scenario: Create decisions/temp.txt, delete it, check list_pages root.
+	// Expected: The "decisions" folder no longer appears.
+	s := setupTestServer(t)
+
+	// Create a file in a nested folder
+	callTool(s, "put_page", map[string]string{
+		"path":    "decisions/temp.txt",
+		"content": "temporary",
+	})
+
+	// Delete it
+	callTool(s, "delete_page", map[string]string{
+		"path": "decisions/temp.txt",
+	})
+
+	// List root — "decisions" folder should be gone
+	resp := callTool(s, "list_pages", map[string]string{})
+	text := getTextContent(t, resp)
+	if strings.Contains(text, "decisions") {
+		t.Errorf("expected empty 'decisions' folder to be cleaned up, got: %s", text)
+	}
+}
+
+func TestSearchPages_MatchesFilename_DiscoverByName_ReturnsResult(t *testing.T) {
+	// Business context: Agents often search for a page by topic name. If the
+	// file is named "tools.txt" but the content doesn't literally say "tools",
+	// search should still find it by matching the path.
+	// Scenario: File at architecture/tools.txt, content says "Five MCP endpoints".
+	// Expected: Searching for "tools" matches the filename.
+	s := setupTestServer(t)
+	dir := filepath.Join(s.pagesRoot(), "arch")
+	os.MkdirAll(dir, 0o755)
+	os.WriteFile(filepath.Join(dir, "tools.txt"), []byte("Five MCP endpoints exposed via stdio."), 0o644)
+
+	resp := callTool(s, "search_pages", map[string]string{"query": "tools"})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "arch/tools.txt") {
+		t.Errorf("expected filename match for 'tools', got: %s", text)
+	}
+}
 
 func TestToolCall_UnknownTool_ReturnsError(t *testing.T) {
 	// Business context: Agents may call tools that don't exist (typos, wrong server).
