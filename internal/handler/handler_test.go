@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -101,5 +102,48 @@ func TestParseTildePath_Variations(t *testing.T) {
 				t.Errorf("rawPath = %q, want %q", rawPath, tt.wantRawPath)
 			}
 		})
+	}
+}
+
+func TestHandleSignup_QueryStringCredentials_PreventURLLeakage_IgnoresQueryParams(t *testing.T) {
+	// Business context: Credentials in URL query strings leak via server logs,
+	// proxy logs, and Referer headers. FormValue() reads both query strings and
+	// POST body, so we must use PostFormValue() to only accept body params.
+	// Scenario: POST /signup with credentials ONLY in the query string, empty body.
+	// Expected: Returns 400 because PostFormValue returns empty strings.
+
+	// We need a handler that doesn't need real stores — just test the form parsing.
+	// HandleSignup with nil stores will panic on DB call, but validation runs first.
+	// If username comes from query string, FormValue returns it but PostFormValue won't.
+	handler := HandleSignup(nil, nil)
+
+	req := httptest.NewRequest("POST", "/signup?username=alice&password=secretpass", strings.NewReader(""))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 — query string credentials should be rejected", w.Code)
+	}
+}
+
+func TestHandleLogin_QueryStringCredentials_PreventURLLeakage_IgnoresQueryParams(t *testing.T) {
+	// Business context: Same as signup — credentials must come from POST body only.
+	// Scenario: POST /login with credentials ONLY in the query string, empty body.
+	// Expected: Returns 400 or 401 because PostFormValue returns empty strings.
+
+	handler := HandleLogin(nil, nil)
+
+	req := httptest.NewRequest("POST", "/login?username=alice&password=secretpass", strings.NewReader(""))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	// With PostFormValue, username is empty → GetPasswordHash gets "" → either
+	// validation fails or user not found. Either way, not 200.
+	if w.Code == http.StatusOK {
+		t.Fatal("status = 200 — query string credentials should not auth successfully")
 	}
 }

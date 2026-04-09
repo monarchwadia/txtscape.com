@@ -40,8 +40,8 @@ func HandleSignup(users *auth.UserStore, tokens *auth.TokenStore) http.HandlerFu
 			writeError(w, http.StatusBadRequest, "invalid form data")
 			return
 		}
-		username := r.FormValue("username")
-		password := r.FormValue("password")
+		username := r.PostFormValue("username")
+		password := r.PostFormValue("password")
 
 		if err := auth.ValidateUsername(username); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
@@ -89,8 +89,13 @@ func HandleLogin(users *auth.UserStore, tokens *auth.TokenStore) http.HandlerFun
 			writeError(w, http.StatusBadRequest, "invalid form data")
 			return
 		}
-		username := r.FormValue("username")
-		password := r.FormValue("password")
+		username := r.PostFormValue("username")
+		password := r.PostFormValue("password")
+
+		if username == "" || password == "" {
+			writeError(w, http.StatusUnauthorized, "invalid credentials")
+			return
+		}
 
 		hash, err := users.GetPasswordHash(r.Context(), username)
 		if err != nil {
