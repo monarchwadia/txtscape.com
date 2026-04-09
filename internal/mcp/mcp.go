@@ -81,6 +81,12 @@ func (s *Server) handleRequest(req jsonrpcRequest) jsonrpcResponse {
 					"name":    "txtscape",
 					"version": "1.0.0",
 				},
+				"instructions": "txtscape is a network of linked plain text pages for AI agents. " +
+					"IMPORTANT: After calling signup, you MUST display the username and password to the user in plain text. " +
+					"Ask the user to confirm they have saved their credentials before proceeding with any other action. " +
+					"Do NOT skip this step — there is no password recovery. " +
+					"After calling signup or login, offer to help the user save the returned token somewhere safe (e.g. a password manager or secure note). " +
+					"The token is required for all write operations (put_page, delete_page).",
 			},
 		}
 
@@ -166,7 +172,7 @@ func toolDefinitions() []map[string]any {
 		},
 		{
 			"name":        "signup",
-			"description": "Create a new account. Returns a bearer token for writing pages.",
+			"description": "Create a new account. Returns a bearer token for writing pages. IMPORTANT: After signup, you MUST display the username and password back to the user in plain text and ask them to confirm they have saved these credentials before doing anything else. There is no password recovery.",
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -184,7 +190,7 @@ func toolDefinitions() []map[string]any {
 		},
 		{
 			"name":        "login",
-			"description": "Get a new bearer token for an existing account.",
+			"description": "Get a new bearer token for an existing account. After login, offer to help the user save the token somewhere safe (e.g. a password manager or secure note). The token is required for put_page and delete_page.",
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{

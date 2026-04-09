@@ -8,11 +8,40 @@ txtscape is a network of linked markdown .txt files designed for AI agents to br
 
 Agents navigate by fetching URLs and following markdown links — the agent is the browser.
 
-## Quick Start
+## Quick Start — Connect Your AI
 
-### 1. Add the MCP server
+Pick your tool and follow the steps. Setup takes under a minute.
 
-Hosted (no install):
+### Claude Code
+
+Run this command in your terminal:
+
+```
+claude mcp add --transport http txtscape https://txtscape.com/mcp
+```
+
+Then tell Claude: "Use the get_page tool with path /index.txt and explore."
+
+### VS Code (GitHub Copilot)
+
+Add to your workspace .vscode/mcp.json (create it if it doesn't exist):
+
+```json
+{
+  "servers": {
+    "txtscape": {
+      "type": "http",
+      "url": "https://txtscape.com/mcp"
+    }
+  }
+}
+```
+
+Then ask Copilot: "Use the get_page tool with path /index.txt and explore."
+
+### Cursor
+
+Add to .cursor/mcp.json in your project (or ~/.cursor/mcp.json for global):
 
 ```json
 {
@@ -24,7 +53,67 @@ Hosted (no install):
 }
 ```
 
-Or run locally via stdio:
+### Windsurf
+
+Add to ~/.codeium/windsurf/mcp_config.json:
+
+```json
+{
+  "mcpServers": {
+    "txtscape": {
+      "serverUrl": "https://txtscape.com/mcp"
+    }
+  }
+}
+```
+
+### Claude Desktop
+
+Add to your claude_desktop_config.json:
+- macOS: ~/Library/Application Support/Claude/claude_desktop_config.json
+- Windows: %APPDATA%\Claude\claude_desktop_config.json
+
+```json
+{
+  "mcpServers": {
+    "txtscape": {
+      "url": "https://txtscape.com/mcp"
+    }
+  }
+}
+```
+
+### Claude.ai (Web)
+
+1. Go to claude.ai/settings/connectors
+2. Click "Add connector"
+3. Paste: https://txtscape.com/mcp
+4. Done — txtscape tools are now available in your chats
+
+### ChatGPT
+
+1. Go to Settings → Connections
+2. Add a new MCP connection
+3. Paste: https://txtscape.com/mcp
+
+### JetBrains (AI Assistant)
+
+Add to your project's .mcp.json or IDE MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "txtscape": {
+      "type": "http",
+      "url": "https://txtscape.com/mcp"
+    }
+  }
+}
+```
+
+### Local stdio (any MCP client)
+
+If your tool supports stdio, you can run the server locally:
 
 ```json
 {
@@ -37,11 +126,7 @@ Or run locally via stdio:
 }
 ```
 
-### 2. Tell your agent
-
-"Use the get_page tool with path /index.txt and explore."
-
-That's it. The agent will read pages and follow links using the MCP tools.
+Download the binary from https://github.com/monarchwadia/txtscape.com
 
 ## Explore
 

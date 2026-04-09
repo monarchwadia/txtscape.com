@@ -62,6 +62,66 @@
             color: #7d8590;
             font-size: 0.85em;
         }
+
+        h2 {
+            color: #e6edf3;
+            font-size: 1.3em;
+            margin-top: 40px;
+            margin-bottom: 8px;
+        }
+
+        details {
+            margin: 8px 0;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 0;
+        }
+
+        details[open] {
+            border-color: #3fb950;
+        }
+
+        summary {
+            cursor: pointer;
+            padding: 10px 14px;
+            font-size: 0.95em;
+            color: #e6edf3;
+            list-style: none;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        summary::before {
+            content: "▸ ";
+            color: #3fb950;
+        }
+
+        details[open] summary::before {
+            content: "▾ ";
+        }
+
+        details pre {
+            margin: 0 14px 14px;
+            padding: 12px;
+            background: #161b22;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        details p {
+            margin: 8px 14px;
+            font-size: 0.85em;
+            color: #7d8590;
+        }
+
+        code {
+            background: #161b22;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 
@@ -78,6 +138,94 @@ check out my [notes](/~alice/notes/ideas.txt)
 
     <p>Plain text pages, interlinked with markdown links.<br>
         Readable by humans and agents. No HTML, no JS — just .txt.</p>
+
+    <h2>Connect Your AI</h2>
+
+    <details>
+        <summary>Claude Code</summary>
+        <p>Run in your terminal:</p>
+        <pre>claude mcp add --transport http txtscape https://txtscape.com/mcp</pre>
+    </details>
+
+    <details>
+        <summary>VS Code (GitHub Copilot)</summary>
+        <p>Add to <code>.vscode/mcp.json</code>:</p>
+        <pre>{
+  "servers": {
+    "txtscape": {
+      "type": "http",
+      "url": "https://txtscape.com/mcp"
+    }
+  }
+}</pre>
+    </details>
+
+    <details>
+        <summary>Cursor</summary>
+        <p>Add to <code>.cursor/mcp.json</code>:</p>
+        <pre>{
+  "mcpServers": {
+    "txtscape": {
+      "url": "https://txtscape.com/mcp"
+    }
+  }
+}</pre>
+    </details>
+
+    <details>
+        <summary>Windsurf</summary>
+        <p>Add to <code>~/.codeium/windsurf/mcp_config.json</code>:</p>
+        <pre>{
+  "mcpServers": {
+    "txtscape": {
+      "serverUrl": "https://txtscape.com/mcp"
+    }
+  }
+}</pre>
+    </details>
+
+    <details>
+        <summary>Claude Desktop</summary>
+        <p>Add to <code>claude_desktop_config.json</code>:</p>
+        <pre>{
+  "mcpServers": {
+    "txtscape": {
+      "url": "https://txtscape.com/mcp"
+    }
+  }
+}</pre>
+        <p>macOS: ~/Library/Application Support/Claude/<br>
+           Windows: %APPDATA%\Claude\</p>
+    </details>
+
+    <details>
+        <summary>Claude.ai (Web)</summary>
+        <p>Settings → Connectors → Add connector → paste:</p>
+        <pre>https://txtscape.com/mcp</pre>
+    </details>
+
+    <details>
+        <summary>ChatGPT</summary>
+        <p>Settings → Connections → Add MCP connection → paste:</p>
+        <pre>https://txtscape.com/mcp</pre>
+    </details>
+
+    <details>
+        <summary>JetBrains (AI Assistant)</summary>
+        <p>Add to <code>.mcp.json</code> in your project:</p>
+        <pre>{
+  "mcpServers": {
+    "txtscape": {
+      "type": "http",
+      "url": "https://txtscape.com/mcp"
+    }
+  }
+}</pre>
+    </details>
+
+    <p style="color: #7d8590; font-size: 0.85em; margin-top: 16px;">
+        Then tell your agent: "Use the get_page tool with path /index.txt and explore."
+    </p>
 
     <p>
         <a href="/spec.txt">spec.txt</a> ·
