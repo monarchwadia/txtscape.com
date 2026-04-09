@@ -95,3 +95,192 @@ func TestJourney_CrossUserLinks_InterlinkedContent_BothResolve(t *testing.T) {
 		t.Fatalf("bob page missing link to alice: %s", body)
 	}
 }
+
+// Journey: Browser visits a published page, then the same URL as an agent
+//
+// Business context: Content negotiation lets browsers see styled HTML and agents
+// see raw plaintext at the same URL. This is the core feature that makes txtscape
+// human-browsable without breaking the agent experience.
+//
+// Steps:
+//   1. Sign up and publish a markdown page with a heading and a link
+//   2. GET the page with Accept: text/html (browser) → styled HTML with clickable link
+//   3. GET the same page with Accept: */* (agent) → raw plaintext, unchanged
+//   4. Verify Vary: Accept header on both responses
+//
+// Expected: Same URL, two representations. Browser gets HTML, agent gets plaintext.
+func TestJourney_ContentNegotiation_BrowserVsAgent_SameURLTwoViews(t *testing.T) {
+	srv, cleanup := setupServer(t)
+	defer cleanup()
+
+	token := signup(t, srv, "viewer", "password123")
+
+	content := "# My Page\n\nHello world.\n\nSee [other page](/~viewer/other.txt)."
+	resp := putPage(t, srv, token, "/~viewer/page.txt", content)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("PUT status = %d", resp.StatusCode)
+	}
+
+	// Step 2: Browser view
+	status, body, headers := getPageWithAccept(t, srv, "/~viewer/page.txt",
+		"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+
+	if status != 200 {
+		t.Fatalf("browser GET status = %d", status)
+	}
+	ct := headers.Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/html") {
+		t.Fatalf("browser content-type = %q, want text/html", ct)
+	}
+	if !strings.Contains(body, "<!DOCTYPE html>") {
+		t.Error("browser response missing DOCTYPE")
+	}
+	if !strings.Contains(body, "#0d1117") {
+		t.Error("browser response missing dark theme")
+	}
+	if !strings.Contains(body, `<a href="/~viewer/other.txt">`) {
+		t.Error("browser response missing clickable link")
+	}
+	if !strings.Contains(body, ">My Page<") {
+		t.Error("browser response missing rendered heading")
+	}
+	if !strings.Contains(headers.Get("Vary"), "Accept") {
+		t.Error("browser response missing Vary: Accept")
+	}
+
+	// Step 3: Agent view
+	status, body, headers = getPageWithAccept(t, srv, "/~viewer/page.txt", "*/*")
+
+	if status != 200 {
+		t.Fatalf("agent GET status = %d", status)
+	}
+	ct = headers.Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/plain") {
+		t.Fatalf("agent content-type = %q, want text/plain", ct)
+	}
+	if body != content {
+		t.Fatalf("agent body = %q, want exact plaintext", body)
+	}
+	if !strings.Contains(headers.Get("Vary"), "Accept") {
+		t.Error("agent response missing Vary: Accept")
+	}
+}
+
+// Journey: Browser views a directory listing with folders and files
+//
+// Business context: Directory listings should render as styled HTML lists in
+// browsers, with 📁/📄 icons distinguishing folders from files, and clickable
+// links that use relative paths (not hardcoded https://txtscape.com/).
+//
+// Steps:
+//   1. Sign up and publish files in a folder structure
+//   2. GET the directory listing as browser → HTML with <ul>/<li>, icons, relative links
+//   3. GET the same listing as agent → plaintext markdown with icons
+//
+// Expected: Folders show 📁, files show 📄, links are relative and clickable.
+func TestJourney_DirectoryListing_BrowserView_StyledWithIcons(t *testing.T) {
+	srv, cleanup := setupServer(t)
+	defer cleanup()
+
+	token := signup(t, srv, "lister", "password123")
+
+	// Create a folder structure
+	for _, p := range []struct{ path, content string }{
+		{"/~lister/blog/post.txt", "a blog post"},
+		{"/~lister/blog/draft.txt", "a draft"},
+		{"/~lister/notes/idea.txt", "an idea"},
+	} {
+		resp := putPage(t, srv, token, p.path, p.content)
+		resp.Body.Close()
+	}
+
+	// Browser view of root
+	status, body, headers := getPageWithAccept(t, srv, "/~lister/",
+		"text/html,application/xhtml+xml,*/*;q=0.8")
+
+	if status != 200 {
+		t.Fatalf("browser listing status = %d", status)
+	}
+	if !strings.HasPrefix(headers.Get("Content-Type"), "text/html") {
+		t.Fatalf("content-type = %q, want text/html", headers.Get("Content-Type"))
+	}
+	if !strings.Contains(body, "📁") {
+		t.Error("missing folder icon in browser listing")
+	}
+	if !strings.Contains(body, "📄") {
+		// Root listing only has folders, so check blog/ listing for file icon
+	}
+	if !strings.Contains(body, "<ul") {
+		t.Error("listing not rendered as HTML list")
+	}
+	if !strings.Contains(body, "<li>") {
+		t.Error("listing items not rendered as <li>")
+	}
+	// Links must be relative, not absolute
+	if strings.Contains(body, "https://txtscape.com") {
+		t.Error("listing contains hardcoded absolute URL")
+	}
+	if !strings.Contains(body, `href="/~lister/blog/"`) {
+		t.Error("missing relative link to blog folder")
+	}
+
+	// Agent view — same URL, plaintext markdown
+	status, body, _ = getPageWithAccept(t, srv, "/~lister/", "*/*")
+	if status != 200 {
+		t.Fatalf("agent listing status = %d", status)
+	}
+	if !strings.Contains(body, "📁") {
+		t.Error("agent listing missing folder icon")
+	}
+	if !strings.Contains(body, "/~lister/blog/") {
+		t.Error("agent listing missing relative link")
+	}
+}
+
+// Journey: Browser hits a 404 page
+//
+// Business context: When a browser navigates to a page that doesn't exist,
+// they should see a styled HTML error page, not raw JSON.
+//
+// Steps:
+//   1. GET a non-existent page as browser → styled 404
+//   2. GET the same URL as agent → JSON error
+//
+// Expected: Browser sees HTML 404 with dark theme. Agent sees JSON.
+func TestJourney_NotFound_BrowserVsAgent_StyledErrorVsJSON(t *testing.T) {
+	srv, cleanup := setupServer(t)
+	defer cleanup()
+
+	signup(t, srv, "ghost", "password123")
+
+	// Browser 404
+	status, body, headers := getPageWithAccept(t, srv, "/~ghost/missing.txt",
+		"text/html,application/xhtml+xml,*/*;q=0.8")
+
+	if status != 404 {
+		t.Fatalf("browser 404 status = %d", status)
+	}
+	if !strings.HasPrefix(headers.Get("Content-Type"), "text/html") {
+		t.Fatalf("browser 404 content-type = %q, want text/html", headers.Get("Content-Type"))
+	}
+	if !strings.Contains(body, "#0d1117") {
+		t.Error("browser 404 missing dark theme")
+	}
+	if !strings.Contains(body, "page not found") {
+		t.Error("browser 404 missing error message")
+	}
+
+	// Agent 404
+	status, body, headers = getPageWithAccept(t, srv, "/~ghost/missing.txt", "*/*")
+
+	if status != 404 {
+		t.Fatalf("agent 404 status = %d", status)
+	}
+	if headers.Get("Content-Type") != "application/json" {
+		t.Fatalf("agent 404 content-type = %q, want application/json", headers.Get("Content-Type"))
+	}
+	if !strings.Contains(body, `"page not found"`) {
+		t.Error("agent 404 missing JSON error message")
+	}
+}

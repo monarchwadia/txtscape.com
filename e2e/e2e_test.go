@@ -92,6 +92,19 @@ func getPage(t *testing.T, srv *httptest.Server, path string) (int, string) {
 	return resp.StatusCode, string(body)
 }
 
+func getPageWithAccept(t *testing.T, srv *httptest.Server, path, accept string) (int, string, http.Header) {
+	t.Helper()
+	req, _ := http.NewRequest("GET", srv.URL+path, nil)
+	req.Header.Set("Accept", accept)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET %s: %v", path, err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(body), resp.Header
+}
+
 func deletePage(t *testing.T, srv *httptest.Server, token, path string) *http.Response {
 	t.Helper()
 	req, _ := http.NewRequest("DELETE", srv.URL+path, nil)
