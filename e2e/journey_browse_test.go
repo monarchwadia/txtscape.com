@@ -103,10 +103,10 @@ func TestJourney_CrossUserLinks_InterlinkedContent_BothResolve(t *testing.T) {
 // human-browsable without breaking the agent experience.
 //
 // Steps:
-//   1. Sign up and publish a markdown page with a heading and a link
-//   2. GET the page with Accept: text/html (browser) → styled HTML with clickable link
-//   3. GET the same page with Accept: */* (agent) → raw plaintext, unchanged
-//   4. Verify Vary: Accept header on both responses
+//  1. Sign up and publish a markdown page with a heading and a link
+//  2. GET the page with Accept: text/html (browser) → styled HTML with clickable link
+//  3. GET the same page with Accept: */* (agent) → raw plaintext, unchanged
+//  4. Verify Vary: Accept header on both responses
 //
 // Expected: Same URL, two representations. Browser gets HTML, agent gets plaintext.
 func TestJourney_ContentNegotiation_BrowserVsAgent_SameURLTwoViews(t *testing.T) {
@@ -174,9 +174,9 @@ func TestJourney_ContentNegotiation_BrowserVsAgent_SameURLTwoViews(t *testing.T)
 // links that use relative paths (not hardcoded https://txtscape.com/).
 //
 // Steps:
-//   1. Sign up and publish files in a folder structure
-//   2. GET the directory listing as browser → HTML with <ul>/<li>, icons, relative links
-//   3. GET the same listing as agent → plaintext markdown with icons
+//  1. Sign up and publish files in a folder structure
+//  2. GET the directory listing as browser → HTML with <ul>/<li>, icons, relative links
+//  3. GET the same listing as agent → plaintext markdown with icons
 //
 // Expected: Folders show 📁, files show 📄, links are relative and clickable.
 func TestJourney_DirectoryListing_BrowserView_StyledWithIcons(t *testing.T) {
@@ -244,8 +244,8 @@ func TestJourney_DirectoryListing_BrowserView_StyledWithIcons(t *testing.T) {
 // they should see a styled HTML error page, not raw JSON.
 //
 // Steps:
-//   1. GET a non-existent page as browser → styled 404
-//   2. GET the same URL as agent → JSON error
+//  1. GET a non-existent page as browser → styled 404
+//  2. GET the same URL as agent → JSON error
 //
 // Expected: Browser sees HTML 404 with dark theme. Agent sees JSON.
 func TestJourney_NotFound_BrowserVsAgent_StyledErrorVsJSON(t *testing.T) {

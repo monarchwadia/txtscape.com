@@ -1,0 +1,18 @@
+# MCP stdio transport only (no HTTP server)
+
+Status: Accepted
+Date: 2026-04-09
+
+## Context
+The original txtscape served MCP over HTTP on port 8080. This required a
+running server process, a Dockerfile, Railway deployment, and network config.
+
+## Decision
+v1 uses stdio transport only. The agent launches the binary as a subprocess
+and communicates via stdin/stdout JSON-RPC. No ports, no daemon, no Docker.
+
+## Consequences
+- Zero infrastructure — just a Go binary
+- VS Code launches it automatically via mcp.json
+- No auth needed — filesystem permissions are sufficient
+- Future: can add HTTP transport back if needed for web UI

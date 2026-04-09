@@ -1,0 +1,19 @@
+# MCP Tool Inventory
+
+Five tools exposed via MCP:
+
+1. get_page    — Read a single .txt file by path
+2. put_page    — Create or update a .txt file (auto-creates folders)
+3. delete_page — Remove a .txt file
+4. list_pages  — Browse a directory with first-line previews
+5. search_pages — Grep across all files with surrounding context
+
+## Path Rules
+- Must end in .txt
+- Max 10 folder depth
+- Folder names: lowercase alphanumeric/hyphens/underscores, max 50 chars
+- No traversal (../, absolute paths blocked)
+
+## Limits
+- 1MB max file size per page
+- Search returns up to 100 matches

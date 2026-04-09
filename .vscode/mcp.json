@@ -1,8 +1,14 @@
 {
   "servers": {
+    // Original hosted txtscape server (PostgreSQL-backed)
+    // "txtscape-hosted": {
+    //   "type": "http",
+    //   "url": "http://localhost:8080/mcp"
+    // },
     "txtscape": {
-      "type": "http",
-      "url": "http://localhost:8080/mcp"
+      "type": "stdio",
+      "command": "${workspaceFolder}/bin/txtscape-mcp",
+      "cwd": "${workspaceFolder}"
     }
   }
 }

@@ -1,0 +1,21 @@
+# Use flat .txt files instead of SQLite or PostgreSQL
+
+Status: Accepted
+Date: 2026-04-09
+
+## Context
+txtscape started as a PostgreSQL-backed hosted platform. We explored SQLite
+as an intermediate step, but binary SQLite files in git are a blocker for
+diffing, merging, and code review.
+
+## Decision
+Store pages as plain .txt files in .txtscape/pages/. One file per page.
+Folders map to URL-like paths. No database at all — the filesystem IS the
+storage layer.
+
+## Consequences
+- Pages are diffable and mergeable in git
+- Zero external dependencies (no database driver)
+- Multi-user collaboration works through normal git workflows
+- No query language — search is grep-based
+- 1MB max file size keeps things reasonable
