@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -355,6 +356,36 @@ func HandleStaticFile(path string) http.HandlerFunc {
 		w.Header().Set("Content-Type", ct)
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)
+	}
+}
+
+// UserStat holds public stats for a single user.
+type UserStat = auth.UserStat
+
+// UserLister retrieves user statistics.
+type UserLister interface {
+	ListUserStats(ctx context.Context) ([]UserStat, error)
+}
+
+// HandleUsers serves GET /users.txt — a public directory of all users.
+func HandleUsers(lister UserLister) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		stats, err := lister.ListUserStats(r.Context())
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+
+		var b strings.Builder
+		b.WriteString("# users\n\n")
+		for _, u := range stats {
+			fmt.Fprintf(&b, "- [~%s](/~%s) — %d pages, joined %s\n",
+				u.Username, u.Username, u.Pages, u.JoinedAt.Format("2006-01-02"))
+		}
+
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, b.String())
 	}
 }
 

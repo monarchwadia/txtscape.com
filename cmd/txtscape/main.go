@@ -43,6 +43,7 @@ func main() {
 	mux.HandleFunc("GET /index.txt", handler.HandleStaticFile("content/index.txt"))
 	mux.HandleFunc("GET /spec.txt", handler.HandleStaticFile("content/spec.txt"))
 	mux.HandleFunc("GET /og-image.png", handler.HandleStaticFile("content/og-image.png"))
+	mux.HandleFunc("GET /users.txt", handler.HandleUsers(userStore))
 
 	// Auth
 	mux.HandleFunc("POST /signup", handler.HandleSignup(userStore, tokenStore))

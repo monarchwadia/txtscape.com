@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestExtractBearer_Valid_ParseHeader_ReturnsToken(t *testing.T) {
@@ -315,5 +318,107 @@ func TestHandleLogin_QueryStringCredentials_PreventURLLeakage_IgnoresQueryParams
 	// validation fails or user not found. Either way, not 200.
 	if w.Code == http.StatusOK {
 		t.Fatal("status = 200 — query string credentials should not auth successfully")
+	}
+}
+
+// fakeUserLister implements UserLister for unit tests.
+type fakeUserLister struct {
+	stats []UserStat
+	err   error
+}
+
+func (f *fakeUserLister) ListUserStats(ctx context.Context) ([]UserStat, error) {
+	return f.stats, f.err
+}
+
+func TestHandleUsers_MultipleUsers_PublicDirectory_ReturnsFormattedListing(t *testing.T) {
+	// Business context: /users.txt is a public directory of all users with basic
+	// stats, allowing agents and humans to discover who is publishing content.
+	// Scenario: Two users exist with different page counts and join dates.
+	// Expected: Returns text/plain with a formatted listing showing username,
+	// page count, and join date for each user.
+
+	joined := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)
+	lister := &fakeUserLister{
+		stats: []UserStat{
+			{Username: "alice", Pages: 5, TotalSizeBytes: 2048, JoinedAt: joined},
+			{Username: "bob", Pages: 12, TotalSizeBytes: 51200, JoinedAt: joined.Add(24 * time.Hour)},
+		},
+	}
+
+	h := HandleUsers(lister)
+	req := httptest.NewRequest("GET", "/users.txt", nil)
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if ct != "text/plain; charset=utf-8" {
+		t.Fatalf("content-type = %q, want text/plain; charset=utf-8", ct)
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "alice") {
+		t.Error("body missing alice")
+	}
+	if !strings.Contains(body, "bob") {
+		t.Error("body missing bob")
+	}
+	if !strings.Contains(body, "5 pages") {
+		t.Error("body missing alice's page count")
+	}
+	if !strings.Contains(body, "12 pages") {
+		t.Error("body missing bob's page count")
+	}
+	if !strings.Contains(body, "/~alice") {
+		t.Error("body missing link to alice's profile")
+	}
+	if !strings.Contains(body, "/~bob") {
+		t.Error("body missing link to bob's profile")
+	}
+}
+
+func TestHandleUsers_NoUsers_EmptyNetwork_ReturnsHeaderOnly(t *testing.T) {
+	// Business context: When no one has signed up yet, the page should still render
+	// cleanly with a header but no user entries.
+	// Scenario: Empty user list.
+	// Expected: Returns 200 with a header but no user lines.
+
+	lister := &fakeUserLister{stats: []UserStat{}}
+
+	h := HandleUsers(lister)
+	req := httptest.NewRequest("GET", "/users.txt", nil)
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "# users") {
+		t.Error("missing header")
+	}
+}
+
+func TestHandleUsers_DBError_GracefulFailure_Returns500(t *testing.T) {
+	// Business context: If the database is unreachable, the handler should return
+	// a clean error rather than crashing or returning partial data.
+	// Scenario: UserLister returns an error.
+	// Expected: Returns 500 with a JSON error.
+
+	lister := &fakeUserLister{err: errors.New("connection refused")}
+
+	h := HandleUsers(lister)
+	req := httptest.NewRequest("GET", "/users.txt", nil)
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", w.Code)
 	}
 }

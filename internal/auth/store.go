@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,6 +14,14 @@ var (
 	ErrUserExists   = errors.New("username already taken")
 	ErrUserNotFound = errors.New("user not found")
 )
+
+// UserStat holds public stats for a single user.
+type UserStat struct {
+	Username       string
+	Pages          int
+	TotalSizeBytes int
+	JoinedAt       time.Time
+}
 
 // UserStore handles user persistence.
 type UserStore struct {
@@ -87,6 +96,32 @@ func (s *TokenStore) GetHashesByUsername(ctx context.Context, username string) (
 
 func isDuplicateKey(err error) bool {
 	return err != nil && contains(err.Error(), "duplicate key")
+}
+
+// ListUserStats returns public stats for all users, ordered by join date.
+func (s *UserStore) ListUserStats(ctx context.Context) ([]UserStat, error) {
+	rows, err := s.DB.Query(ctx, `
+		SELECT u.username, COUNT(p.id) AS pages,
+		       COALESCE(SUM(p.size_bytes), 0) AS total_size_bytes,
+		       u.created_at
+		FROM users u
+		LEFT JOIN pages p ON u.username = p.username
+		GROUP BY u.username, u.created_at
+		ORDER BY u.created_at ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("listing users: %w", err)
+	}
+	defer rows.Close()
+
+	var stats []UserStat
+	for rows.Next() {
+		var s UserStat
+		if err := rows.Scan(&s.Username, &s.Pages, &s.TotalSizeBytes, &s.JoinedAt); err != nil {
+			return nil, fmt.Errorf("scanning user stats: %w", err)
+		}
+		stats = append(stats, s)
+	}
+	return stats, rows.Err()
 }
 
 func contains(s, substr string) bool {
