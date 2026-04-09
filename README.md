@@ -77,3 +77,17 @@ This repo has a Copilot skill at `.github/skills/write/SKILL.md`. Use `/write` i
 | `/write what's missing` | Gap analysis — scan code vs tests, find holes |
 
 Follows red/green TDD: one failing test → minimum code to pass → repeat. See `references/methodology.md` for details.
+
+## /scan-vulnerabilities skill
+
+Security scanning skill at `.github/skills/scan-vulnerabilities/SKILL.md`. Use `/scan-vulnerabilities` in Copilot chat.
+
+| Command | What it does |
+|---------|-------------|
+| `/scan-vulnerabilities` | Full scan — all categories |
+| `/scan-vulnerabilities auth` | Auth, tokens, password hashing |
+| `/scan-vulnerabilities injection` | SQL injection, path traversal |
+| `/scan-vulnerabilities infra` | Dockerfile, deps, secrets |
+| `/scan-vulnerabilities <file>` | All checks against one file |
+
+Reads actual code, reports findings as a severity-sorted table, offers to fix starting from highest severity.
