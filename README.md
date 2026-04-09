@@ -47,6 +47,31 @@ Integration and e2e need Postgres. Default `DATABASE_URL`: `postgres://postgres:
 
 ## Deploy
 
+### Railway (recommended)
+
+Prerequisites: [Install the Railway CLI](https://docs.railway.com/cli) and run `railway login`.
+
+```
+make deploy
+```
+
+This runs an interactive, idempotent Go script that:
+1. Creates a Railway project
+2. Adds a PostgreSQL database
+3. Adds the `txtscape.com` custom domain
+4. Deploys using the Dockerfile
+
+Every step asks for confirmation before executing. Safe to re-run — it skips steps that are already done.
+
+After deploying, add a DNS record:
+```
+CNAME  txtscape.com  →  <service>.up.railway.app
+```
+
+Railway auto-provisions SSL once DNS propagates.
+
+### Docker (manual)
+
 ```
 docker build -t txtscape .
 docker run -e DATABASE_URL=postgres://... -p 8080:8080 txtscape

@@ -1,10 +1,10 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     username      TEXT PRIMARY KEY,
     password_hash TEXT NOT NULL,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE tokens (
+CREATE TABLE IF NOT EXISTS tokens (
     id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username      TEXT NOT NULL REFERENCES users(username),
     label         TEXT NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE tokens (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE pages (
+CREATE TABLE IF NOT EXISTS pages (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username    TEXT NOT NULL REFERENCES users(username),
     folder_path TEXT NOT NULL,
@@ -29,4 +29,4 @@ CREATE TABLE pages (
     CHECK (size_bytes > 0 AND size_bytes <= 102400)
 );
 
-CREATE INDEX idx_pages_folder ON pages (username, folder_path);
+CREATE INDEX IF NOT EXISTS idx_pages_folder ON pages (username, folder_path);
