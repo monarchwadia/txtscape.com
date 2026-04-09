@@ -10,9 +10,10 @@ RUN CGO_ENABLED=0 go build -o /txtscape ./cmd/txtscape
 
 FROM alpine:3.20
 
-RUN apk --no-cache add ca-certificates postgresql-client
+RUN apk --no-cache add ca-certificates
 
 COPY --from=builder /txtscape /txtscape
+COPY content/ /content/
 COPY migrations/ /migrations/
 
 EXPOSE 8080

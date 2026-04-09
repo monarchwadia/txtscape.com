@@ -5,7 +5,6 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "preDeployCommand": "psql \"$DATABASE_URL\" -f /migrations/001_init.sql",
     "healthcheckPath": "/index.txt",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",

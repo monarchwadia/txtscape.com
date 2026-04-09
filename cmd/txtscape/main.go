@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,6 +32,10 @@ func main() {
 
 	if err := pool.Ping(ctx); err != nil {
 		log.Fatalf("pinging database: %v", err)
+	}
+
+	if err := runMigrations(ctx, pool); err != nil {
+		log.Fatalf("running migrations: %v", err)
 	}
 
 	userStore := &auth.UserStore{DB: pool}
@@ -89,4 +94,22 @@ func main() {
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
+}
+
+func runMigrations(ctx context.Context, pool *pgxpool.Pool) error {
+	files, err := filepath.Glob("migrations/*.sql")
+	if err != nil {
+		return fmt.Errorf("finding migration files: %w", err)
+	}
+	for _, f := range files {
+		sql, err := os.ReadFile(f)
+		if err != nil {
+			return fmt.Errorf("reading %s: %w", f, err)
+		}
+		if _, err := pool.Exec(ctx, string(sql)); err != nil {
+			return fmt.Errorf("executing %s: %w", f, err)
+		}
+		log.Printf("migration applied: %s", f)
+	}
+	return nil
 }
