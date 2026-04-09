@@ -432,7 +432,7 @@ func TestHTTPHandler_PostToolCall_StreamableHTTP_ReturnsToolResult(t *testing.T)
 		JSONRPC: "2.0",
 		ID:      json.RawMessage(`2`),
 		Method:  "tools/call",
-		Params: json.RawMessage(`{"name":"get_page","arguments":{"path":"/~alice/hello.txt"}}`),
+		Params:  json.RawMessage(`{"name":"get_page","arguments":{"path":"/~alice/hello.txt"}}`),
 	})
 
 	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(string(body)))
