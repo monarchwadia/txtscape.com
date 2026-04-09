@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/txtscape/txtscape.com/internal/auth"
@@ -17,6 +19,101 @@ import (
 )
 
 const maxBodySize = 102400 // 100KB
+
+// prefersHTML returns true if the request's Accept header indicates a browser
+// (contains "text/html"). Agents, curl, and MCP clients typically send */* or
+// text/plain and get raw plaintext instead.
+func prefersHTML(r *http.Request) bool {
+	return strings.Contains(r.Header.Get("Accept"), "text/html")
+}
+
+var mdLinkRe = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+var mdHeadingRe = regexp.MustCompile(`^(#{1,6})\s+(.+)$`)
+
+// renderHTML wraps markdown content in a styled HTML page for browser viewing.
+// It performs minimal markdown rendering: headings, links, and HTML escaping.
+// No external dependencies — just stdlib regexp and html.EscapeString.
+func renderHTML(title, markdown string) string {
+	var b strings.Builder
+
+	b.WriteString(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>`)
+	b.WriteString(html.EscapeString(title))
+	b.WriteString(` — txtscape</title>
+<style>
+body{background:#0d1117;color:#e6edf3;font-family:'SF Mono','Fira Code','Cascadia Code','JetBrains Mono',monospace;max-width:640px;margin:80px auto;padding:0 24px;line-height:1.7}
+a{color:#3fb950;text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4,h5,h6{color:#e6edf3;margin:1.5em 0 0.5em;font-weight:600}
+h1{font-size:1.6em;border-bottom:1px solid #30363d;padding-bottom:0.3em}
+h2{font-size:1.3em}
+h3{font-size:1.1em}
+pre.content{white-space:pre-wrap;word-wrap:break-word;margin:0;font-size:0.9em}
+.breadcrumb{color:#7d8590;font-size:0.85em;margin-bottom:24px}
+.breadcrumb a{color:#7d8590}
+.breadcrumb a:hover{color:#3fb950}
+</style>
+</head>
+<body>
+<div class="breadcrumb"><a href="/">txtscape</a> / `)
+	b.WriteString(html.EscapeString(title))
+	b.WriteString(`</div>
+`)
+
+	// Process line by line
+	lines := strings.Split(markdown, "\n")
+	inPre := false
+
+	for _, line := range lines {
+		// Check for heading
+		if m := mdHeadingRe.FindStringSubmatch(line); m != nil {
+			if inPre {
+				b.WriteString("</pre>\n")
+				inPre = false
+			}
+			level := len(m[1])
+			escaped := html.EscapeString(m[2])
+			// Render links inside headings
+			escaped = mdLinkRe.ReplaceAllStringFunc(escaped, func(s string) string {
+				// Re-unescape the link parts since the whole line was escaped
+				return s
+			})
+			fmt.Fprintf(&b, "<h%d>%s</h%d>\n", level, renderLinks(escaped), level)
+			continue
+		}
+
+		// Regular line — render inside <pre>
+		if !inPre {
+			b.WriteString(`<pre class="content">`)
+			inPre = true
+		}
+
+		// Escape HTML, then convert markdown links to <a> tags
+		escaped := html.EscapeString(line)
+		escaped = renderLinks(escaped)
+		b.WriteString(escaped)
+		b.WriteString("\n")
+	}
+
+	if inPre {
+		b.WriteString("</pre>\n")
+	}
+
+	b.WriteString(`</body>
+</html>`)
+
+	return b.String()
+}
+
+// renderLinks converts markdown-style [text](url) to <a href="url">text</a>.
+// Operates on already-HTML-escaped text so we must match escaped characters.
+func renderLinks(s string) string {
+	return mdLinkRe.ReplaceAllString(s, `<a href="$2">$1</a>`)
+}
 
 type jsonError struct {
 	Error string `json:"error"`
@@ -304,9 +401,8 @@ func handleGetPage(w http.ResponseWriter, r *http.Request, pageStore *pages.Page
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, contents)
+	title := "~" + username + "/" + rawPath
+	serveTextContent(w, r, title, contents)
 }
 
 func serveListing(w http.ResponseWriter, r *http.Request, pageStore *pages.PageStore, username, rawPath string) {
@@ -321,9 +417,8 @@ func serveListing(w http.ResponseWriter, r *http.Request, pageStore *pages.PageS
 	// First check if there's an index.txt in this folder
 	contents, err := pageStore.Get(r.Context(), username, folderPath, "index.txt")
 	if err == nil {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, contents)
+		title := "~" + username + "/" + rawPath
+		serveTextContent(w, r, title, contents)
 		return
 	}
 
@@ -335,13 +430,28 @@ func serveListing(w http.ResponseWriter, r *http.Request, pageStore *pages.PageS
 	}
 
 	listing := pages.GenerateListing(username, folderPath, entries)
+	title := "~" + username + "/" + rawPath
+	serveTextContent(w, r, title, listing)
+}
+
+// serveTextContent serves text with content negotiation.
+// Browsers get styled HTML; agents get raw plaintext.
+func serveTextContent(w http.ResponseWriter, r *http.Request, title, content string) {
+	w.Header().Set("Vary", "Accept")
+	if prefersHTML(r) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, renderHTML(title, content))
+		return
+	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, listing)
+	io.WriteString(w, content)
 }
 
 // HandleStaticFile serves a static file from the filesystem,
 // detecting content type from the file extension.
+// For .txt files, browsers get a styled HTML view; agents get raw plaintext.
 func HandleStaticFile(path string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := os.ReadFile(path)
@@ -349,6 +459,13 @@ func HandleStaticFile(path string) http.HandlerFunc {
 			writeError(w, http.StatusNotFound, "not found")
 			return
 		}
+
+		// Content negotiation for .txt files
+		if filepath.Ext(path) == ".txt" {
+			serveTextContent(w, r, filepath.Base(path), string(data))
+			return
+		}
+
 		ct := mime.TypeByExtension(filepath.Ext(path))
 		if ct == "" {
 			ct = "application/octet-stream"
@@ -383,9 +500,7 @@ func HandleUsers(lister UserLister) http.HandlerFunc {
 				u.Username, u.Username, u.Pages, u.JoinedAt.Format("2006-01-02"))
 		}
 
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, b.String())
+		serveTextContent(w, r, "users.txt", b.String())
 	}
 }
 

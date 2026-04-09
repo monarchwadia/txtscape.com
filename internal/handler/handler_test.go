@@ -12,6 +12,165 @@ import (
 	"time"
 )
 
+func TestPrefersHTML_BrowserAccept_ContentNegotiation_ReturnsTrue(t *testing.T) {
+	// Business context: Browsers send Accept headers containing text/html.
+	// When a browser visits a .txt page, we want to render a styled HTML view
+	// so the content is readable. Agents get raw plaintext.
+	// Scenario: Request with a typical browser Accept header.
+	// Expected: Returns true — browser wants HTML.
+
+	tests := []struct {
+		name   string
+		accept string
+		want   bool
+		reason string
+	}{
+		{
+			name:   "chrome default",
+			accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+			want:   true,
+			reason: "Chrome sends text/html first — serve HTML",
+		},
+		{
+			name:   "curl default",
+			accept: "*/*",
+			want:   false,
+			reason: "curl sends */* — treat as agent, serve plaintext",
+		},
+		{
+			name:   "no accept header",
+			accept: "",
+			want:   false,
+			reason: "missing Accept — treat as agent, serve plaintext",
+		},
+		{
+			name:   "explicit text/plain",
+			accept: "text/plain",
+			want:   false,
+			reason: "client explicitly wants plaintext",
+		},
+		{
+			name:   "agent with json",
+			accept: "application/json",
+			want:   false,
+			reason: "API client — serve plaintext",
+		},
+		{
+			name:   "firefox default",
+			accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+			want:   true,
+			reason: "Firefox sends text/html — serve HTML",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/", nil)
+			if tt.accept != "" {
+				req.Header.Set("Accept", tt.accept)
+			}
+			got := prefersHTML(req)
+			if got != tt.want {
+				t.Errorf("prefersHTML(%q) = %v, want %v — %s", tt.accept, got, tt.want, tt.reason)
+			}
+		})
+	}
+}
+
+func TestRenderHTML_BasicMarkdown_BrowserView_RendersStyledPage(t *testing.T) {
+	// Business context: When a browser visits a .txt page, we render it as styled
+	// HTML so humans can read it comfortably. The markdown content must be converted
+	// to HTML with clickable links and styled headings, wrapped in the site's dark theme.
+	// Scenario: Render a markdown string with headings, links, and plain text.
+	// Expected: Output is valid HTML with the dark theme, headings become styled,
+	// markdown links become clickable <a> tags, and plain text is preserved.
+
+	input := "# My Page\n\nHello world.\n\n- [home](/~alice)\n- [blog](/~alice/blog/)\n\n## Section Two\n\nSome text with [a link](/~bob/hello.txt) inline."
+	result := renderHTML("~alice/page.txt", input)
+
+	// Must be valid HTML structure
+	if !strings.Contains(result, "<!DOCTYPE html>") {
+		t.Error("missing DOCTYPE")
+	}
+	if !strings.Contains(result, "<html") {
+		t.Error("missing <html>")
+	}
+	if !strings.Contains(result, "</html>") {
+		t.Error("missing </html>")
+	}
+
+	// Must have the dark theme background
+	if !strings.Contains(result, "#0d1117") {
+		t.Error("missing dark theme background color")
+	}
+
+	// Title should appear in <title> tag
+	if !strings.Contains(result, "<title>~alice/page.txt") {
+		t.Error("missing title tag with page path")
+	}
+
+	// Markdown links must become clickable <a> tags
+	if !strings.Contains(result, `<a href="/~alice">home</a>`) {
+		t.Error("missing rendered link for [home](/~alice)")
+	}
+	if !strings.Contains(result, `<a href="/~bob/hello.txt">a link</a>`) {
+		t.Error("missing rendered link for [a link](/~bob/hello.txt)")
+	}
+
+	// Content-Type meta tag
+	if !strings.Contains(result, `charset`) {
+		t.Error("missing charset declaration")
+	}
+}
+
+func TestRenderHTML_HTMLEscaping_PreventXSS_EscapesSpecialCharacters(t *testing.T) {
+	// Business context: User-generated content may contain HTML special characters.
+	// We must escape them to prevent XSS attacks. A malicious user could put
+	// <script> tags in their .txt files attempting to execute JS in browser viewers.
+	// Scenario: Content contains HTML tags and script injection attempts.
+	// Expected: All HTML special characters are escaped, no raw <script> in output.
+
+	input := `# Safe Page
+
+Hello <script>alert("xss")</script> world.
+
+Check [this](/~alice) & "that".`
+
+	result := renderHTML("test.txt", input)
+
+	if strings.Contains(result, "<script>") {
+		t.Fatal("XSS: raw <script> tag found in output")
+	}
+	if !strings.Contains(result, "&lt;script&gt;") {
+		t.Error("HTML special characters not escaped")
+	}
+	if !strings.Contains(result, "&amp;") {
+		t.Error("ampersand not escaped")
+	}
+}
+
+func TestRenderHTML_HeadingRendering_VisualHierarchy_HeadingsStyled(t *testing.T) {
+	// Business context: Markdown headings (# and ##) provide visual structure.
+	// In the HTML view, they should be rendered distinctly from body text so
+	// humans can scan the page structure.
+	// Scenario: Content with h1 and h2 headings.
+	// Expected: Headings are wrapped in heading tags or styled elements.
+
+	input := "# Title\n\nBody text.\n\n## Subtitle\n\nMore text.\n\n### Third Level"
+	result := renderHTML("test.txt", input)
+
+	// Headings should be rendered as HTML heading elements
+	if !strings.Contains(result, ">Title</") {
+		t.Error("h1 heading not rendered")
+	}
+	if !strings.Contains(result, ">Subtitle</") {
+		t.Error("h2 heading not rendered")
+	}
+	if !strings.Contains(result, ">Third Level</") {
+		t.Error("h3 heading not rendered")
+	}
+}
+
 func TestExtractBearer_Valid_ParseHeader_ReturnsToken(t *testing.T) {
 	token := extractBearer("Bearer abc123")
 	if token != "abc123" {
@@ -189,6 +348,104 @@ func TestHandleStaticFile_PNGFile_ServeWithCorrectContentType_ReturnsImagePNG(t 
 	}
 }
 
+func TestHandleStaticFile_TxtBrowserAccept_ContentNegotiation_ReturnsHTML(t *testing.T) {
+	// Business context: When a browser (Accept: text/html) visits a .txt URL like
+	// /index.txt or /spec.txt, we want to render a styled HTML page so humans can
+	// read comfortably. Agents get raw plaintext at the same URL.
+	// Scenario: Serve a .txt file with a browser Accept header.
+	// Expected: Returns text/html with styled content, not text/plain.
+
+	dir := t.TempDir()
+	txtPath := dir + "/test.txt"
+	os.WriteFile(txtPath, []byte("# Hello\n\nWorld."), 0644)
+
+	h := HandleStaticFile(txtPath)
+
+	// Browser request
+	req := httptest.NewRequest("GET", "/test.txt", nil)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/html") {
+		t.Fatalf("content-type = %q, want text/html for browser", ct)
+	}
+	if !strings.Contains(w.Body.String(), "#0d1117") {
+		t.Error("missing dark theme in HTML output")
+	}
+	if !strings.Contains(w.Body.String(), "World.") {
+		t.Error("missing page content in HTML output")
+	}
+	vary := w.Header().Get("Vary")
+	if !strings.Contains(vary, "Accept") {
+		t.Error("missing Vary: Accept header for caching")
+	}
+}
+
+func TestHandleStaticFile_TxtAgentAccept_ContentNegotiation_ReturnsPlaintext(t *testing.T) {
+	// Business context: Agents, curl, and MCP clients must get raw plaintext at
+	// the same URL so they can parse it directly. Content negotiation must not
+	// break the existing agent experience.
+	// Scenario: Serve a .txt file with no Accept or with */*.
+	// Expected: Returns text/plain with raw content, unchanged from current behavior.
+
+	dir := t.TempDir()
+	txtPath := dir + "/test.txt"
+	os.WriteFile(txtPath, []byte("# Hello\n\nWorld."), 0644)
+
+	h := HandleStaticFile(txtPath)
+
+	// Agent request (curl-style)
+	req := httptest.NewRequest("GET", "/test.txt", nil)
+	req.Header.Set("Accept", "*/*")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/plain") {
+		t.Fatalf("content-type = %q, want text/plain for agent", ct)
+	}
+	if w.Body.String() != "# Hello\n\nWorld." {
+		t.Fatalf("body = %q, want raw plaintext", w.Body.String())
+	}
+}
+
+func TestHandleStaticFile_NonTxtBrowserAccept_NoNegotiation_ReturnsOriginal(t *testing.T) {
+	// Business context: Content negotiation only applies to .txt files. HTML files,
+	// PNGs, and other assets must be served as-is regardless of Accept header.
+	// Scenario: Serve a .html file with a browser Accept header.
+	// Expected: Returns text/html with original content (no double-wrapping).
+
+	dir := t.TempDir()
+	htmlPath := dir + "/test.html"
+	os.WriteFile(htmlPath, []byte("<html><body>hi</body></html>"), 0644)
+
+	h := HandleStaticFile(htmlPath)
+
+	req := httptest.NewRequest("GET", "/test.html", nil)
+	req.Header.Set("Accept", "text/html,*/*;q=0.8")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	// Should serve original HTML, not wrap it
+	if w.Body.String() != "<html><body>hi</body></html>" {
+		t.Fatalf("body = %q, original HTML should not be modified", w.Body.String())
+	}
+}
+
 func TestLandingPage_OGTags_SocialMediaPreview_ContainsAllRequiredTags(t *testing.T) {
 	// Business context: Social media platforms (Facebook, Twitter/X, LinkedIn,
 	// Discord, Slack) use OG meta tags to render link previews. Missing tags
@@ -329,6 +586,47 @@ type fakeUserLister struct {
 
 func (f *fakeUserLister) ListUserStats(ctx context.Context) ([]UserStat, error) {
 	return f.stats, f.err
+}
+
+func TestHandleUsers_BrowserAccept_ContentNegotiation_ReturnsHTML(t *testing.T) {
+	// Business context: When a browser visits /users.txt, we want to render a styled
+	// HTML page with clickable links to user profiles. Agents still get raw plaintext.
+	// Scenario: GET /users.txt with browser Accept header.
+	// Expected: Returns text/html with clickable user links and dark theme.
+
+	joined := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)
+	lister := &fakeUserLister{
+		stats: []UserStat{
+			{Username: "alice", Pages: 5, TotalSizeBytes: 2048, JoinedAt: joined},
+		},
+	}
+
+	h := HandleUsers(lister)
+
+	req := httptest.NewRequest("GET", "/users.txt", nil)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/html") {
+		t.Fatalf("content-type = %q, want text/html for browser", ct)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "#0d1117") {
+		t.Error("missing dark theme")
+	}
+	if !strings.Contains(body, `<a href="/~alice">`) {
+		t.Error("missing clickable link to ~alice")
+	}
+	vary := w.Header().Get("Vary")
+	if !strings.Contains(vary, "Accept") {
+		t.Error("missing Vary: Accept header")
+	}
 }
 
 func TestHandleUsers_MultipleUsers_PublicDirectory_ReturnsFormattedListing(t *testing.T) {
