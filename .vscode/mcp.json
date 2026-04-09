@@ -2,7 +2,7 @@
   "servers": {
     "txtscape": {
       "type": "http",
-      "url": "https://txtscape.com/mcp"
+      "url": "http://localhost:8080/mcp"
     }
   }
 }

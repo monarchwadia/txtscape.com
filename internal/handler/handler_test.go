@@ -171,6 +171,48 @@ func TestRenderHTML_HeadingRendering_VisualHierarchy_HeadingsStyled(t *testing.T
 	}
 }
 
+func TestRenderHTML_ListItems_DirectoryListing_RendersAsHTMLList(t *testing.T) {
+	// Business context: Directory listings use markdown list items (- [name](url)).
+	// In the HTML view, these should render as a proper <ul>/<li> list, not inside
+	// a <pre> block, so they look like a clean file browser.
+	// Scenario: A typical directory listing with folders and files.
+	// Expected: List items render as <li> inside <ul>, with clickable links.
+
+	input := "# ~alice\n\n- 📁 [blog/](/~alice/blog/)\n- 📄 [hello.txt](/~alice/hello.txt)"
+	result := renderHTML("~alice/", input)
+
+	if !strings.Contains(result, "<ul") {
+		t.Error("missing <ul> — list items should render as HTML list")
+	}
+	if !strings.Contains(result, "<li>") {
+		t.Error("missing <li> — each list item should be a <li>")
+	}
+	if !strings.Contains(result, `<a href="/~alice/blog/">`) {
+		t.Error("missing folder link")
+	}
+	if !strings.Contains(result, `<a href="/~alice/hello.txt">`) {
+		t.Error("missing file link")
+	}
+	if !strings.Contains(result, "📁") {
+		t.Error("missing folder icon")
+	}
+	if !strings.Contains(result, "📄") {
+		t.Error("missing file icon")
+	}
+	// Should NOT be inside a <pre> block
+	if strings.Contains(result, "<pre") && strings.Contains(result, "📁") {
+		// Check that the list items are not wrapped in <pre>
+		preIdx := strings.Index(result, "<pre")
+		iconIdx := strings.Index(result, "📁")
+		if preIdx < iconIdx {
+			preEnd := strings.Index(result[preIdx:], "</pre>")
+			if preEnd == -1 || preIdx+preEnd > iconIdx {
+				t.Error("list items should not be inside <pre> block")
+			}
+		}
+	}
+}
+
 func TestExtractBearer_Valid_ParseHeader_ReturnsToken(t *testing.T) {
 	token := extractBearer("Bearer abc123")
 	if token != "abc123" {
@@ -218,6 +260,65 @@ func TestWriteError_BadRequest_ClientError_Returns400JSON(t *testing.T) {
 	}
 	if resp.Error != "test error" {
 		t.Fatalf("error = %q, want %q", resp.Error, "test error")
+	}
+}
+
+func TestServeError_BrowserAccept_ContentNegotiation_ReturnsStyledHTML(t *testing.T) {
+	// Business context: When a browser hits a 404 or other error on a page URL,
+	// it should see a styled HTML error page matching the site theme, not raw JSON.
+	// Scenario: GET request with browser Accept header hits a missing page.
+	// Expected: Returns text/html with styled error page containing the error message.
+
+	req := httptest.NewRequest("GET", "/~alice/missing.txt", nil)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
+	w := httptest.NewRecorder()
+
+	serveError(w, req, http.StatusNotFound, "page not found")
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/html") {
+		t.Fatalf("content-type = %q, want text/html for browser", ct)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "#0d1117") {
+		t.Error("missing dark theme in error page")
+	}
+	if !strings.Contains(body, "page not found") {
+		t.Error("missing error message in HTML output")
+	}
+	if !strings.Contains(body, "<!DOCTYPE html>") {
+		t.Error("missing DOCTYPE in error page")
+	}
+}
+
+func TestServeError_AgentAccept_ContentNegotiation_ReturnsJSON(t *testing.T) {
+	// Business context: Agents and API clients should continue to receive JSON
+	// error responses so they can parse error messages programmatically.
+	// Scenario: GET request with */* Accept header hits a missing page.
+	// Expected: Returns application/json with the error.
+
+	req := httptest.NewRequest("GET", "/~alice/missing.txt", nil)
+	req.Header.Set("Accept", "*/*")
+	w := httptest.NewRecorder()
+
+	serveError(w, req, http.StatusNotFound, "page not found")
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if ct != "application/json" {
+		t.Fatalf("content-type = %q, want application/json for agent", ct)
+	}
+	var resp jsonError
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decoding: %v", err)
+	}
+	if resp.Error != "page not found" {
+		t.Fatalf("error = %q, want %q", resp.Error, "page not found")
 	}
 }
 

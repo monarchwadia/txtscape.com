@@ -29,6 +29,7 @@ func prefersHTML(r *http.Request) bool {
 
 var mdLinkRe = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
 var mdHeadingRe = regexp.MustCompile(`^(#{1,6})\s+(.+)$`)
+var mdListItemRe = regexp.MustCompile(`^- (.+)$`)
 
 // renderHTML wraps markdown content in a styled HTML page for browser viewing.
 // It performs minimal markdown rendering: headings, links, and HTML escaping.
@@ -53,6 +54,8 @@ h1{font-size:1.6em;border-bottom:1px solid #30363d;padding-bottom:0.3em}
 h2{font-size:1.3em}
 h3{font-size:1.1em}
 pre.content{white-space:pre-wrap;word-wrap:break-word;margin:0;font-size:0.9em}
+ul.listing{list-style:none;padding:0;margin:0}
+ul.listing li{padding:4px 0;font-size:0.95em}
 .breadcrumb{color:#7d8590;font-size:0.85em;margin-bottom:24px}
 .breadcrumb a{color:#7d8590}
 .breadcrumb a:hover{color:#3fb950}
@@ -67,6 +70,7 @@ pre.content{white-space:pre-wrap;word-wrap:break-word;margin:0;font-size:0.9em}
 	// Process line by line
 	lines := strings.Split(markdown, "\n")
 	inPre := false
+	inList := false
 
 	for _, line := range lines {
 		// Check for heading
@@ -75,15 +79,37 @@ pre.content{white-space:pre-wrap;word-wrap:break-word;margin:0;font-size:0.9em}
 				b.WriteString("</pre>\n")
 				inPre = false
 			}
+			if inList {
+				b.WriteString("</ul>\n")
+				inList = false
+			}
 			level := len(m[1])
 			escaped := html.EscapeString(m[2])
-			// Render links inside headings
-			escaped = mdLinkRe.ReplaceAllStringFunc(escaped, func(s string) string {
-				// Re-unescape the link parts since the whole line was escaped
-				return s
-			})
 			fmt.Fprintf(&b, "<h%d>%s</h%d>\n", level, renderLinks(escaped), level)
 			continue
+		}
+
+		// Check for list item (- content)
+		if m := mdListItemRe.FindStringSubmatch(line); m != nil {
+			if inPre {
+				b.WriteString("</pre>\n")
+				inPre = false
+			}
+			if !inList {
+				b.WriteString("<ul class=\"listing\">\n")
+				inList = true
+			}
+			escaped := html.EscapeString(m[1])
+			b.WriteString("<li>")
+			b.WriteString(renderLinks(escaped))
+			b.WriteString("</li>\n")
+			continue
+		}
+
+		// Non-list line closes any open list
+		if inList {
+			b.WriteString("</ul>\n")
+			inList = false
 		}
 
 		// Regular line — render inside <pre>
@@ -101,6 +127,9 @@ pre.content{white-space:pre-wrap;word-wrap:break-word;margin:0;font-size:0.9em}
 
 	if inPre {
 		b.WriteString("</pre>\n")
+	}
+	if inList {
+		b.WriteString("</ul>\n")
 	}
 
 	b.WriteString(`</body>
@@ -131,6 +160,18 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, jsonError{Error: msg})
+}
+
+// serveError returns an error response with content negotiation.
+// Browsers get a styled HTML error page; agents get JSON.
+func serveError(w http.ResponseWriter, r *http.Request, status int, msg string) {
+	if prefersHTML(r) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(status)
+		io.WriteString(w, renderHTML("error", fmt.Sprintf("# %d\n\n%s", status, msg)))
+		return
+	}
+	writeError(w, status, msg)
 }
 
 // HandleSignup handles POST /signup.
@@ -387,17 +428,17 @@ func handleGetPage(w http.ResponseWriter, r *http.Request, pageStore *pages.Page
 
 	parsed, err := pages.ParsePath(rawPath)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		serveError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	contents, err := pageStore.Get(r.Context(), username, parsed.FolderPath, parsed.FileName)
 	if err != nil {
 		if errors.Is(err, pages.ErrPageNotFound) {
-			writeError(w, http.StatusNotFound, "page not found")
+			serveError(w, r, http.StatusNotFound, "page not found")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal error")
+		serveError(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -425,7 +466,7 @@ func serveListing(w http.ResponseWriter, r *http.Request, pageStore *pages.PageS
 	// No index.txt — generate a directory listing
 	entries, err := pageStore.ListFolder(r.Context(), username, folderPath)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		serveError(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -456,7 +497,7 @@ func HandleStaticFile(path string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := os.ReadFile(path)
 		if err != nil {
-			writeError(w, http.StatusNotFound, "not found")
+			serveError(w, r, http.StatusNotFound, "not found")
 			return
 		}
 
@@ -489,7 +530,7 @@ func HandleUsers(lister UserLister) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		stats, err := lister.ListUserStats(r.Context())
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal error")
+			serveError(w, r, http.StatusInternalServerError, "internal error")
 			return
 		}
 

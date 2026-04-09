@@ -21,9 +21,9 @@ func GenerateListing(username, folderPath string, entries []FolderEntry) string 
 	}
 	for _, e := range entries {
 		if e.IsFolder {
-			buf.WriteString(fmt.Sprintf("- [%s/](https://txtscape.com/~%s%s%s/)\n", e.Name, username, folderPath, e.Name))
+			buf.WriteString(fmt.Sprintf("- 📁 [%s/](/~%s%s%s/)\n", e.Name, username, folderPath, e.Name))
 		} else {
-			buf.WriteString(fmt.Sprintf("- [%s](https://txtscape.com/~%s%s%s)\n", e.Name, username, folderPath, e.Name))
+			buf.WriteString(fmt.Sprintf("- 📄 [%s](/~%s%s%s)\n", e.Name, username, folderPath, e.Name))
 		}
 	}
 	return buf.String()

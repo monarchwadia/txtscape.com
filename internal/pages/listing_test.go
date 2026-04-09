@@ -15,9 +15,9 @@ func TestGenerateListing_RootWithFiles_AgentReadable_ReturnsMarkdown(t *testing.
 	got := GenerateListing("alice", "/", entries)
 
 	want := "# ~alice\n\n" +
-		"- [blog/](https://txtscape.com/~alice/blog/)\n" +
-		"- [hello.txt](https://txtscape.com/~alice/hello.txt)\n" +
-		"- [about.txt](https://txtscape.com/~alice/about.txt)\n"
+		"- 📁 [blog/](/~alice/blog/)\n" +
+		"- 📄 [hello.txt](/~alice/hello.txt)\n" +
+		"- 📄 [about.txt](/~alice/about.txt)\n"
 
 	if got != want {
 		t.Errorf("listing mismatch.\ngot:\n%s\nwant:\n%s", got, want)
@@ -36,8 +36,8 @@ func TestGenerateListing_Subfolder_NestedNavigation_ReturnsCorrectURLs(t *testin
 	got := GenerateListing("alice", "/blog/", entries)
 
 	want := "# ~alice/blog/\n\n" +
-		"- [2026/](https://txtscape.com/~alice/blog/2026/)\n" +
-		"- [intro.txt](https://txtscape.com/~alice/blog/intro.txt)\n"
+		"- 📁 [2026/](/~alice/blog/2026/)\n" +
+		"- 📄 [intro.txt](/~alice/blog/intro.txt)\n"
 
 	if got != want {
 		t.Errorf("listing mismatch.\ngot:\n%s\nwant:\n%s", got, want)
