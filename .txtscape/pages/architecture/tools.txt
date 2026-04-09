@@ -1,19 +1,22 @@
-# MCP Tool Inventory
+# MCP Server Tools
 
-Five tools exposed via MCP:
+Total: 11 tools
 
-1. get_page    — Read a single .txt file by path
-2. put_page    — Create or update a .txt file (auto-creates folders)
-3. delete_page — Remove a .txt file
-4. list_pages  — Browse a directory with first-line previews
-5. search_pages — Grep across all files with surrounding context
+## Core CRUD
+- get_page: Read a page. Returns content + SHA-256 hash for optimistic concurrency.
+- put_page: Create/update a page. Optional expected_hash rejects stale writes.
+- append_page: Append to a page (or create). Atomic, no read-modify-write.
+- delete_page: Remove a page. Cleans up empty parent folders.
+- move_page: Rename/relocate a page. Creates dest folders, cleans up empty source folders.
 
-## Path Rules
-- Must end in .txt
-- Max 10 folder depth
-- Folder names: lowercase alphanumeric/hyphens/underscores, max 50 chars
-- No traversal (../, absolute paths blocked)
+## Discovery
+- list_pages: Browse directory tree with previews. Supports recursive=true.
+- search_pages: Full-text search across all pages. Supports isRegex=true.
+- related_pages: Cross-reference graph — outgoing links + incoming references.
 
-## Limits
-- 1MB max file size per page
-- Search returns up to 100 matches
+## Editing
+- str_replace_page: Surgical edit — old_str must match exactly once.
+
+## Bulk & History
+- snapshot: Concatenate all pages in a subtree into one response.
+- page_history: Git commit history for a page (requires git repo).

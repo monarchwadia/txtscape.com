@@ -136,11 +136,10 @@ func TestInitialize_Instructions_ContainsUsageGuidance(t *testing.T) {
 
 // --- tools/list tests ---
 
-func TestToolsList_DiscoverTools_Returns5Tools(t *testing.T) {
+func TestToolsList_DiscoverTools_ReturnsAllTools(t *testing.T) {
 	// Business context: Agents discover available tools via tools/list.
-	// The complete set is: get_page, put_page, delete_page, list_pages, search_pages.
 	// Scenario: Request tool listing.
-	// Expected: Returns exactly 5 tools.
+	// Expected: Returns all registered tools.
 	s := setupTestServer(t)
 	resp := callMethod(s, "tools/list", nil)
 
@@ -155,16 +154,13 @@ func TestToolsList_DiscoverTools_Returns5Tools(t *testing.T) {
 	if !ok {
 		t.Fatal("tools is not a list of maps")
 	}
-	if len(tools) != 5 {
-		t.Errorf("got %d tools, want 5", len(tools))
-	}
 
 	names := make(map[string]bool)
 	for _, tool := range tools {
 		name, _ := tool["name"].(string)
 		names[name] = true
 	}
-	for _, want := range []string{"get_page", "put_page", "delete_page", "list_pages", "search_pages"} {
+	for _, want := range []string{"get_page", "put_page", "append_page", "delete_page", "move_page", "list_pages", "search_pages", "str_replace_page", "snapshot", "related_pages", "page_history"} {
 		if !names[want] {
 			t.Errorf("missing tool: %s", want)
 		}
@@ -1202,5 +1198,469 @@ func TestToolCall_UnknownTool_ReturnsError(t *testing.T) {
 	}
 	if !strings.Contains(resp.Error.Message, "bogus_tool") {
 		t.Errorf("error should name the unknown tool, got: %s", resp.Error.Message)
+	}
+}
+
+// --- str_replace_page tests ---
+
+func TestStrReplacePage_ExactMatch_ReplacesContent(t *testing.T) {
+	// Business context: Agents need to surgically edit a section of a page
+	// without rewriting the whole file. str_replace finds an exact string
+	// and replaces it.
+	// Scenario: Replace a known substring in a page.
+	// Expected: Only the matched substring changes.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "config.txt",
+		"content": "max_retries: 3\ntimeout: 30s\n",
+	})
+
+	resp := callTool(s, "str_replace_page", map[string]string{
+		"path":    "config.txt",
+		"old_str": "max_retries: 3",
+		"new_str": "max_retries: 5",
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "replaced") {
+		t.Errorf("expected 'replaced' in response, got: %s", text)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(s.pagesRoot(), "config.txt"))
+	if string(data) != "max_retries: 5\ntimeout: 30s\n" {
+		t.Errorf("content = %q, want %q", string(data), "max_retries: 5\ntimeout: 30s\n")
+	}
+}
+
+func TestStrReplacePage_NotFound_OldStrMissing_ReturnsError(t *testing.T) {
+	// Business context: If old_str doesn't exist in the file, the agent
+	// has stale context. Fail clearly so it can re-read.
+	// Scenario: old_str not present in file.
+	// Expected: Error saying old_str not found.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "notes.txt",
+		"content": "hello world",
+	})
+
+	resp := callTool(s, "str_replace_page", map[string]string{
+		"path":    "notes.txt",
+		"old_str": "goodbye",
+		"new_str": "farewell",
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error when old_str not found")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "not found") {
+		t.Errorf("expected 'not found' message, got: %s", text)
+	}
+}
+
+func TestStrReplacePage_Ambiguous_MultipleMatches_ReturnsError(t *testing.T) {
+	// Business context: If old_str appears more than once, the replacement
+	// is ambiguous. Refuse rather than replacing all occurrences or picking one.
+	// Scenario: old_str appears twice in the file.
+	// Expected: Error about multiple matches.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "notes.txt",
+		"content": "TODO: fix auth\nTODO: fix tests\n",
+	})
+
+	resp := callTool(s, "str_replace_page", map[string]string{
+		"path":    "notes.txt",
+		"old_str": "TODO",
+		"new_str": "DONE",
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error for ambiguous match")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "multiple") {
+		t.Errorf("expected 'multiple' in error, got: %s", text)
+	}
+}
+
+func TestStrReplacePage_PageNotFound_ReturnsError(t *testing.T) {
+	// Business context: Replacing in a non-existent page should fail clearly.
+	// Scenario: Page doesn't exist.
+	// Expected: Error with "not found" message.
+	s := setupTestServer(t)
+	resp := callTool(s, "str_replace_page", map[string]string{
+		"path":    "ghost.txt",
+		"old_str": "x",
+		"new_str": "y",
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error for missing page")
+	}
+}
+
+func TestStrReplacePage_ResultExceedsMaxSize_ReturnsError(t *testing.T) {
+	// Business context: Replacement that grows the file past 1MB must be rejected.
+	// Scenario: Replace a short string with a huge string.
+	// Expected: Error about size limit.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "small.txt",
+		"content": "placeholder",
+	})
+
+	resp := callTool(s, "str_replace_page", map[string]string{
+		"path":    "small.txt",
+		"old_str": "placeholder",
+		"new_str": strings.Repeat("x", maxSize+1),
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error when replacement exceeds max size")
+	}
+}
+
+// --- snapshot tests ---
+
+func TestSnapshot_AllPages_ConcatenatesContent(t *testing.T) {
+	// Business context: Agents need to load all project memory in one call
+	// at conversation start, rather than list → get → get → get.
+	// Scenario: Create multiple pages, snapshot root.
+	// Expected: All pages concatenated with path headers.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "decisions/db.txt",
+		"content": "Use flat files.",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path":    "patterns/errors.txt",
+		"content": "Return errors.",
+	})
+
+	resp := callTool(s, "snapshot", map[string]string{})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+
+	if !strings.Contains(text, "decisions/db.txt") {
+		t.Error("snapshot should contain path header for decisions/db.txt")
+	}
+	if !strings.Contains(text, "Use flat files.") {
+		t.Error("snapshot should contain content of decisions/db.txt")
+	}
+	if !strings.Contains(text, "patterns/errors.txt") {
+		t.Error("snapshot should contain path header for patterns/errors.txt")
+	}
+	if !strings.Contains(text, "Return errors.") {
+		t.Error("snapshot should contain content of patterns/errors.txt")
+	}
+}
+
+func TestSnapshot_Subfolder_OnlyThatSubtree(t *testing.T) {
+	// Business context: snapshot of a subtree gives focused context.
+	// Scenario: Snapshot a specific folder.
+	// Expected: Only pages in that folder included.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "decisions/a.txt", "content": "Decision A",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "patterns/b.txt", "content": "Pattern B",
+	})
+
+	resp := callTool(s, "snapshot", map[string]string{"path": "decisions"})
+	text := getTextContent(t, resp)
+
+	if !strings.Contains(text, "Decision A") {
+		t.Error("should contain decisions content")
+	}
+	if strings.Contains(text, "Pattern B") {
+		t.Error("should NOT contain patterns content")
+	}
+}
+
+func TestSnapshot_Empty_ReturnsMessage(t *testing.T) {
+	// Business context: Snapshot of empty memory should be clear.
+	// Scenario: Snapshot with no pages.
+	// Expected: "(empty)" message.
+	s := setupTestServer(t)
+	resp := callTool(s, "snapshot", map[string]string{})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "empty") {
+		t.Errorf("expected 'empty' message, got: %s", text)
+	}
+}
+
+// --- related_pages tests ---
+
+func TestRelatedPages_FindsOutgoingLinks(t *testing.T) {
+	// Business context: Agents need to discover related knowledge. A page
+	// that mentions other page paths has outgoing references.
+	// Scenario: Page A mentions page B's path in its content.
+	// Expected: related_pages for A lists B as a reference.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "decisions/auth.txt",
+		"content": "# Auth Decision\n\nSee also: patterns/tokens.txt for implementation.",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path":    "patterns/tokens.txt",
+		"content": "# Token Patterns\n\nUse bcrypt for hashing.",
+	})
+
+	resp := callTool(s, "related_pages", map[string]string{"path": "decisions/auth.txt"})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "patterns/tokens.txt") {
+		t.Errorf("should find outgoing reference to patterns/tokens.txt, got: %s", text)
+	}
+}
+
+func TestRelatedPages_FindsIncomingReferences(t *testing.T) {
+	// Business context: "What pages reference this page?" is critical for
+	// understanding impact — e.g. before changing a decision.
+	// Scenario: Page A mentions page B. Query related_pages for B.
+	// Expected: A is listed as an incoming reference.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "decisions/auth.txt",
+		"content": "See patterns/tokens.txt for details.",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path":    "patterns/tokens.txt",
+		"content": "# Token Patterns",
+	})
+
+	resp := callTool(s, "related_pages", map[string]string{"path": "patterns/tokens.txt"})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "decisions/auth.txt") {
+		t.Errorf("should find incoming reference from decisions/auth.txt, got: %s", text)
+	}
+}
+
+func TestRelatedPages_NoRelations_ReturnsMessage(t *testing.T) {
+	// Business context: A page with no links to or from it should say so clearly.
+	// Scenario: Isolated page with no references.
+	// Expected: "no related pages" message.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "lonely.txt",
+		"content": "Just a standalone note.",
+	})
+
+	resp := callTool(s, "related_pages", map[string]string{"path": "lonely.txt"})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "no related") {
+		t.Errorf("expected 'no related' message, got: %s", text)
+	}
+}
+
+func TestRelatedPages_PageNotFound_ReturnsError(t *testing.T) {
+	// Business context: Querying relations for a non-existent page should fail.
+	// Scenario: Page doesn't exist.
+	// Expected: Error.
+	s := setupTestServer(t)
+	resp := callTool(s, "related_pages", map[string]string{"path": "ghost.txt"})
+	if !isToolError(resp) {
+		t.Fatal("expected error for missing page")
+	}
+}
+
+// --- page_history tests ---
+
+func TestPageHistory_TrackedFile_ReturnsCommits(t *testing.T) {
+	// Business context: Pages in .txtscape/pages/ are committed to git. Agents
+	// need to see how a decision evolved — who changed it, when, why.
+	// Scenario: Create a page, commit it, modify it, commit again. Query history.
+	// Expected: Returns commit history with messages and dates.
+	s := setupTestServer(t)
+
+	// Initialize git repo in the temp directory
+	pagesRoot := s.pagesRoot()
+	runGit(t, s.root, "init")
+	runGit(t, s.root, "config", "user.email", "test@test.com")
+	runGit(t, s.root, "config", "user.name", "Test")
+
+	// Create and commit first version
+	callTool(s, "put_page", map[string]string{
+		"path": "evolving.txt", "content": "version 1",
+	})
+	runGit(t, s.root, "add", filepath.Join(pagesDir, "evolving.txt"))
+	runGit(t, s.root, "commit", "-m", "first version")
+
+	// Modify and commit second version
+	callTool(s, "put_page", map[string]string{
+		"path": "evolving.txt", "content": "version 2",
+	})
+	runGit(t, s.root, "add", filepath.Join(pagesDir, "evolving.txt"))
+	runGit(t, s.root, "commit", "-m", "second version")
+
+	resp := callTool(s, "page_history", map[string]string{"path": "evolving.txt"})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+
+	if !strings.Contains(text, "first version") {
+		t.Error("history should contain first commit message")
+	}
+	if !strings.Contains(text, "second version") {
+		t.Error("history should contain second commit message")
+	}
+	// Verify output includes the path
+	_ = pagesRoot // used above
+}
+
+func TestPageHistory_NoGitRepo_ReturnsError(t *testing.T) {
+	// Business context: If the project isn't a git repo, page_history
+	// should fail gracefully rather than crash.
+	// Scenario: Query history in a non-git directory.
+	// Expected: Error about git not available.
+	s := setupTestServer(t)
+	resp := callTool(s, "page_history", map[string]string{"path": "anything.txt"})
+	if !isToolError(resp) {
+		t.Fatal("expected error when not in a git repo")
+	}
+}
+
+func TestPageHistory_PageNotFound_ReturnsError(t *testing.T) {
+	// Business context: History for a page with no commits should fail clearly.
+	// Scenario: Page exists on disk but has never been committed (repo has a commit but file isn't tracked).
+	// Expected: "no history" message.
+	s := setupTestServer(t)
+	runGit(t, s.root, "init")
+	runGit(t, s.root, "config", "user.email", "test@test.com")
+	runGit(t, s.root, "config", "user.name", "Test")
+
+	// Create an initial commit so the repo isn't empty
+	dummyPath := filepath.Join(s.root, ".gitkeep")
+	os.WriteFile(dummyPath, []byte(""), 0o644)
+	runGit(t, s.root, "add", ".gitkeep")
+	runGit(t, s.root, "commit", "-m", "init")
+
+	callTool(s, "put_page", map[string]string{
+		"path": "uncommitted.txt", "content": "never committed",
+	})
+
+	resp := callTool(s, "page_history", map[string]string{"path": "uncommitted.txt"})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "no history") {
+		t.Errorf("expected 'no history' for uncommitted file, got: %s", text)
+	}
+}
+
+// --- optimistic concurrency tests ---
+
+func TestGetPage_ReturnsHash(t *testing.T) {
+	// Business context: For optimistic concurrency, get_page must return a hash
+	// of the content alongside the text, so agents can detect stale reads.
+	// Scenario: Create and read a page.
+	// Expected: Response includes a hash field.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "versioned.txt", "content": "initial content",
+	})
+
+	resp := callTool(s, "get_page", map[string]string{"path": "versioned.txt"})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	result := resp.Result.(map[string]any)
+	content := result["content"].([]map[string]any)
+	if len(content) < 2 {
+		t.Fatal("expected at least 2 content items (text + hash)")
+	}
+	// Second content item should be the hash
+	hashItem := content[1]
+	if hashItem["type"] != "text" {
+		t.Errorf("hash item type = %v, want text", hashItem["type"])
+	}
+	hashText, _ := hashItem["text"].(string)
+	if !strings.HasPrefix(hashText, "hash:") {
+		t.Errorf("hash item should start with 'hash:', got: %s", hashText)
+	}
+}
+
+func TestPutPage_CorrectHash_AllowsUpdate(t *testing.T) {
+	// Business context: If the agent provides the correct expected_hash,
+	// the update should proceed.
+	// Scenario: Get page with hash, put with matching hash.
+	// Expected: Update succeeds.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "guarded.txt", "content": "original",
+	})
+
+	// Get the hash
+	resp := callTool(s, "get_page", map[string]string{"path": "guarded.txt"})
+	result := resp.Result.(map[string]any)
+	content := result["content"].([]map[string]any)
+	hashText, _ := content[1]["text"].(string)
+	hash := strings.TrimPrefix(hashText, "hash:")
+
+	// Update with correct hash
+	resp = callTool(s, "put_page", map[string]any{
+		"path":          "guarded.txt",
+		"content":       "updated",
+		"expected_hash": hash,
+	})
+	if isToolError(resp) {
+		t.Fatalf("update with correct hash should succeed: %s", getTextContent(t, resp))
+	}
+}
+
+func TestPutPage_WrongHash_RejectsUpdate(t *testing.T) {
+	// Business context: If another agent modified the page since last read,
+	// the hash won't match. Reject to prevent data loss.
+	// Scenario: Put with a stale/wrong expected_hash.
+	// Expected: Error about hash mismatch.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "guarded.txt", "content": "original",
+	})
+
+	resp := callTool(s, "put_page", map[string]any{
+		"path":          "guarded.txt",
+		"content":       "hijack",
+		"expected_hash": "deadbeef",
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error for wrong hash")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "hash mismatch") {
+		t.Errorf("expected 'hash mismatch' error, got: %s", text)
+	}
+}
+
+func TestPutPage_NoHash_StillWorks(t *testing.T) {
+	// Business context: expected_hash is optional. Omitting it should
+	// preserve backward compatibility — update always proceeds.
+	// Scenario: Put without expected_hash on existing page.
+	// Expected: Update succeeds.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "unguarded.txt", "content": "original",
+	})
+
+	resp := callTool(s, "put_page", map[string]string{
+		"path":    "unguarded.txt",
+		"content": "updated without hash",
+	})
+	if isToolError(resp) {
+		t.Fatalf("update without hash should succeed: %s", getTextContent(t, resp))
+	}
+}
+
+// --- test helper for git ---
+
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := append([]string{"-C", dir}, args...)
+	out, err := execGit(cmd...)
+	if err != nil {
+		t.Fatalf("git %v failed: %v\n%s", args, err, out)
 	}
 }

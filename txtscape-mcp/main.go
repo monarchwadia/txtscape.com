@@ -2,9 +2,12 @@ package main
 
 import (
 	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -144,7 +147,12 @@ func (s *server) handleRequest(req jsonrpcRequest) jsonrpcResponse {
 					"Files are plain text with markdown formatting. " +
 					"All pages are stored in .txtscape/pages/ and should be committed to git. " +
 					"Path rules: files must end in .txt, folder names are lowercase alphanumeric/hyphens/underscores (max 50 chars each), max 10 folder levels deep. " +
-					"File size limit: 1MB per page. Search returns up to 100 matches.",
+					"File size limit: 1MB per page. Search returns up to 100 matches. " +
+					"Use str_replace_page for surgical edits (old_str must match exactly once). " +
+					"Use snapshot to load all pages in one call. " +
+					"Use related_pages to discover cross-references between pages. " +
+					"Use page_history to see git commit history for a page. " +
+					"get_page returns a hash for optimistic concurrency — pass expected_hash to put_page to prevent stale overwrites.",
 			},
 		}
 
@@ -190,7 +198,7 @@ func toolDefinitions() []map[string]any {
 		},
 		{
 			"name":        "put_page",
-			"description": "Create or update a .txt page in project memory. Folders are created automatically. Max 1MB per page. Path must end in .txt. Folder names: lowercase alphanumeric/hyphens/underscores, max 50 chars each, max 10 levels deep.",
+			"description": "Create or update a .txt page in project memory. Folders are created automatically. Max 1MB per page. Path must end in .txt. Folder names: lowercase alphanumeric/hyphens/underscores, max 50 chars each, max 10 levels deep. Supports optimistic concurrency: pass expected_hash (from get_page) to prevent stale overwrites.",
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -201,6 +209,10 @@ func toolDefinitions() []map[string]any {
 					"content": map[string]any{
 						"type":        "string",
 						"description": "Plain text content (markdown formatting supported). Maximum 1MB.",
+					},
+					"expected_hash": map[string]any{
+						"type":        "string",
+						"description": "Optional. SHA-256 hash from get_page. If provided and doesn't match current file hash, the update is rejected to prevent stale overwrites.",
 					},
 				},
 				"required": []string{"path", "content"},
@@ -291,6 +303,69 @@ func toolDefinitions() []map[string]any {
 				"required": []string{"query"},
 			},
 		},
+		{
+			"name":        "str_replace_page",
+			"description": "Replace an exact string in a page with a new string. The old_str must appear exactly once in the page (no ambiguity). Use this for surgical edits without rewriting the whole page.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"path": map[string]any{
+						"type":        "string",
+						"description": "Page path relative to .txtscape/pages/. Must end in .txt.",
+					},
+					"old_str": map[string]any{
+						"type":        "string",
+						"description": "The exact string to find. Must appear exactly once in the page.",
+					},
+					"new_str": map[string]any{
+						"type":        "string",
+						"description": "The replacement string.",
+					},
+				},
+				"required": []string{"path", "old_str", "new_str"},
+			},
+		},
+		{
+			"name":        "snapshot",
+			"description": "Read all pages in a subtree and return them concatenated with path headers. Useful for loading all project memory in one call. Pass empty path for the full tree, or a folder path for a subtree.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"path": map[string]any{
+						"type":        "string",
+						"description": "Folder path to snapshot, or empty for root. Example: decisions",
+					},
+				},
+			},
+		},
+		{
+			"name":        "related_pages",
+			"description": "Find pages related to a given page. Returns outgoing references (pages mentioned in this page's content) and incoming references (pages that mention this page).",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"path": map[string]any{
+						"type":        "string",
+						"description": "Page path to find relations for. Must end in .txt.",
+					},
+				},
+				"required": []string{"path"},
+			},
+		},
+		{
+			"name":        "page_history",
+			"description": "Show the git commit history for a page. Returns commit hashes, dates, and messages. Requires the project to be a git repository with committed pages.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"path": map[string]any{
+						"type":        "string",
+						"description": "Page path to show history for. Must end in .txt.",
+					},
+				},
+				"required": []string{"path"},
+			},
+		},
 	}
 }
 
@@ -319,6 +394,14 @@ func (s *server) handleToolCall(req jsonrpcRequest) jsonrpcResponse {
 		return s.handleListPages(req.ID, params.Arguments)
 	case "search_pages":
 		return s.handleSearchPages(req.ID, params.Arguments)
+	case "str_replace_page":
+		return s.handleStrReplacePage(req.ID, params.Arguments)
+	case "snapshot":
+		return s.handleSnapshot(req.ID, params.Arguments)
+	case "related_pages":
+		return s.handleRelatedPages(req.ID, params.Arguments)
+	case "page_history":
+		return s.handlePageHistory(req.ID, params.Arguments)
 	default:
 		return jsonrpcResponse{
 			JSONRPC: "2.0",
@@ -353,13 +436,25 @@ func (s *server) handleGetPage(id json.RawMessage, args json.RawMessage) jsonrpc
 		}
 		return toolError(id, "reading page: "+err.Error())
 	}
-	return toolSuccess(id, string(data))
+	hash := sha256.Sum256(data)
+	hashHex := hex.EncodeToString(hash[:])
+	return jsonrpcResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Result: map[string]any{
+			"content": []map[string]any{
+				{"type": "text", "text": string(data)},
+				{"type": "text", "text": "hash:" + hashHex},
+			},
+		},
+	}
 }
 
 func (s *server) handlePutPage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
 	var a struct {
-		Path    string `json:"path"`
-		Content string `json:"content"`
+		Path         string `json:"path"`
+		Content      string `json:"content"`
+		ExpectedHash string `json:"expected_hash"`
 	}
 	if err := json.Unmarshal(args, &a); err != nil {
 		return toolError(id, "invalid arguments")
@@ -381,6 +476,19 @@ func (s *server) handlePutPage(id json.RawMessage, args json.RawMessage) jsonrpc
 	fullPath := filepath.Join(s.pagesRoot(), filepath.FromSlash(clean))
 	_, existErr := os.Stat(fullPath)
 	isUpdate := existErr == nil
+
+	// Optimistic concurrency check
+	if a.ExpectedHash != "" && isUpdate {
+		existing, err := os.ReadFile(fullPath)
+		if err != nil {
+			return toolError(id, "reading page for hash check: "+err.Error())
+		}
+		hash := sha256.Sum256(existing)
+		currentHash := hex.EncodeToString(hash[:])
+		if currentHash != a.ExpectedHash {
+			return toolError(id, "hash mismatch: page was modified since last read")
+		}
+	}
 
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -693,6 +801,218 @@ func (s *server) handleSearchPages(id json.RawMessage, args json.RawMessage) jso
 		return toolSuccess(id, "no matches found for: "+a.Query)
 	}
 	return toolSuccess(id, results.String())
+}
+
+// --- New tool handlers ---
+
+func (s *server) handleStrReplacePage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		Path   string `json:"path"`
+		OldStr string `json:"old_str"`
+		NewStr string `json:"new_str"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return toolError(id, "invalid arguments")
+	}
+	if a.Path == "" {
+		return toolError(id, "path is required")
+	}
+	if a.OldStr == "" {
+		return toolError(id, "old_str is required")
+	}
+	clean, err := validatePath(a.Path)
+	if err != nil {
+		return toolError(id, err.Error())
+	}
+
+	fullPath := filepath.Join(s.pagesRoot(), filepath.FromSlash(clean))
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return toolError(id, "page not found: "+a.Path)
+		}
+		return toolError(id, "reading page: "+err.Error())
+	}
+
+	content := string(data)
+	count := strings.Count(content, a.OldStr)
+	if count == 0 {
+		return toolError(id, "old_str not found in page")
+	}
+	if count > 1 {
+		return toolError(id, fmt.Sprintf("old_str found %d times (multiple matches, must be unique)", count))
+	}
+
+	newContent := strings.Replace(content, a.OldStr, a.NewStr, 1)
+	if len(newContent) > maxSize {
+		return toolError(id, fmt.Sprintf("replacement would exceed maximum size of %d bytes", maxSize))
+	}
+
+	if err := os.WriteFile(fullPath, []byte(newContent), 0o644); err != nil {
+		return toolError(id, "writing page: "+err.Error())
+	}
+	return toolSuccess(id, "replaced in: "+a.Path)
+}
+
+func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		Path string `json:"path"`
+	}
+	if args != nil {
+		json.Unmarshal(args, &a)
+	}
+
+	root := s.pagesRoot()
+	if a.Path != "" && a.Path != "/" {
+		parts := strings.Split(strings.Trim(a.Path, "/"), "/")
+		for _, p := range parts {
+			if !folderPartRe.MatchString(p) {
+				return toolError(id, fmt.Sprintf("invalid folder name %q", p))
+			}
+		}
+		root = filepath.Join(root, filepath.FromSlash(a.Path))
+	}
+
+	var buf strings.Builder
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".txt") {
+			return nil
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
+		}
+		relPath, _ := filepath.Rel(s.pagesRoot(), path)
+		relPath = filepath.ToSlash(relPath)
+		if buf.Len() > 0 {
+			buf.WriteString("\n")
+		}
+		buf.WriteString(fmt.Sprintf("=== %s ===\n", relPath))
+		buf.WriteString(string(data))
+		if len(data) > 0 && data[len(data)-1] != '\n' {
+			buf.WriteString("\n")
+		}
+		return nil
+	})
+
+	if buf.Len() == 0 {
+		return toolSuccess(id, "(empty)")
+	}
+	return toolSuccess(id, buf.String())
+}
+
+func (s *server) handleRelatedPages(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return toolError(id, "invalid arguments")
+	}
+	if a.Path == "" {
+		return toolError(id, "path is required")
+	}
+	clean, err := validatePath(a.Path)
+	if err != nil {
+		return toolError(id, err.Error())
+	}
+
+	fullPath := filepath.Join(s.pagesRoot(), filepath.FromSlash(clean))
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return toolError(id, "page not found: "+a.Path)
+		}
+		return toolError(id, "reading page: "+err.Error())
+	}
+
+	// Collect all page paths
+	var allPages []string
+	filepath.Walk(s.pagesRoot(), func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil || info.IsDir() || !strings.HasSuffix(path, ".txt") {
+			return nil
+		}
+		relPath, _ := filepath.Rel(s.pagesRoot(), path)
+		relPath = filepath.ToSlash(relPath)
+		allPages = append(allPages, relPath)
+		return nil
+	})
+
+	content := string(data)
+	var outgoing []string
+	for _, p := range allPages {
+		if p != clean && strings.Contains(content, p) {
+			outgoing = append(outgoing, p)
+		}
+	}
+
+	var incoming []string
+	for _, p := range allPages {
+		if p == clean {
+			continue
+		}
+		otherPath := filepath.Join(s.pagesRoot(), filepath.FromSlash(p))
+		otherData, readErr := os.ReadFile(otherPath)
+		if readErr != nil {
+			continue
+		}
+		if strings.Contains(string(otherData), clean) {
+			incoming = append(incoming, p)
+		}
+	}
+
+	if len(outgoing) == 0 && len(incoming) == 0 {
+		return toolSuccess(id, "no related pages found for: "+a.Path)
+	}
+
+	var buf strings.Builder
+	if len(outgoing) > 0 {
+		buf.WriteString("References from this page:\n")
+		for _, p := range outgoing {
+			buf.WriteString("  → " + p + "\n")
+		}
+	}
+	if len(incoming) > 0 {
+		if buf.Len() > 0 {
+			buf.WriteString("\n")
+		}
+		buf.WriteString("Pages referencing this page:\n")
+		for _, p := range incoming {
+			buf.WriteString("  ← " + p + "\n")
+		}
+	}
+	return toolSuccess(id, buf.String())
+}
+
+func (s *server) handlePageHistory(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
+	var a struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return toolError(id, "invalid arguments")
+	}
+	if a.Path == "" {
+		return toolError(id, "path is required")
+	}
+	clean, err := validatePath(a.Path)
+	if err != nil {
+		return toolError(id, err.Error())
+	}
+
+	relPath := filepath.Join(pagesDir, filepath.FromSlash(clean))
+	out, err := execGit("-C", s.root, "log", "--follow", "--pretty=format:%H %ai %s", "--", relPath)
+	if err != nil {
+		return toolError(id, "git log failed: "+strings.TrimSpace(out))
+	}
+	if strings.TrimSpace(out) == "" {
+		return toolSuccess(id, "no history found for: "+a.Path)
+	}
+	return toolSuccess(id, out)
+}
+
+func execGit(args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
 }
 
 // --- Helpers ---
