@@ -36,10 +36,10 @@ If ambiguous, ask using the ask-questions tool.
 | User says | Mode | txtscape reference |
 |---|---|---|
 | `/write tests` | Auto-detect level from open file | See routing below |
-| `/write unit tests` | Unit | `get_page` → `references/skills/write/unit.txt` |
-| `/write integration tests` | Integration | `get_page` → `references/skills/write/integration.txt` |
-| `/write e2e` | E2E | `get_page` → `references/skills/write/e2e.txt` |
-| `/write handler`, `/write code`, `/write migration` | Production code | `get_page` → `references/skills/write/code.txt` |
+| `/write unit tests` | Unit | `get_page` → `references/skills/shared/unit.txt` |
+| `/write integration tests` | Integration | `get_page` → `references/skills/shared/integration.txt` |
+| `/write e2e` | E2E | `get_page` → `references/skills/shared/e2e.txt` |
+| `/write handler`, `/write code`, `/write migration` | Production code | `get_page` → `references/skills/shared/code.txt` |
 | `/write plan` | Preview only — describe what you'd do, don't act | All references as needed |
 | `/write what's missing` | Gap analysis — scan code vs tests, find holes | All references as needed |
 
@@ -54,7 +54,7 @@ If ambiguous, ask using the ask-questions tool.
 
 ## Step 4: Follow the methodology
 
-**This is the most important section. Use `get_page` → `references/skills/write/methodology.txt` before writing anything.**
+**This is the most important section. Use `get_page` → `references/skills/shared/methodology.txt` before writing anything.**
 
 Summary:
 - **Walking skeleton first**: get the thinnest possible slice working end-to-end before adding depth
@@ -91,7 +91,7 @@ Do not store trivial implementation details.
 ## Shared conventions
 
 All modes share these — load via txtscape `get_page`:
-- `references/skills/write/test-conventions.txt` — naming, comments, structure
-- `references/skills/write/validation-rules.txt` — regexes, limits, status codes
-- `references/skills/write/db-setup.txt` — TestMain, per-package DB, cleanup
-- `references/skills/write/test-helpers.txt` — signUp, putPage, requireStatus
+- `references/skills/shared/test-conventions.txt` — naming, comments, structure
+- `references/skills/shared/validation-rules.txt` — regexes, limits, status codes
+- `references/skills/shared/db-setup.txt` — TestMain, per-package DB, cleanup
+- `references/skills/shared/test-helpers.txt` — signUp, putPage, requireStatus
