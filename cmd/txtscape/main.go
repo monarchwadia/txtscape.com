@@ -42,6 +42,7 @@ func main() {
 	// Static content
 	mux.HandleFunc("GET /index.txt", handler.HandleStaticFile("content/index.txt"))
 	mux.HandleFunc("GET /spec.txt", handler.HandleStaticFile("content/spec.txt"))
+	mux.HandleFunc("GET /og-image.png", handler.HandleStaticFile("content/og-image.png"))
 
 	// Auth
 	mux.HandleFunc("POST /signup", handler.HandleSignup(userStore, tokenStore))
@@ -63,9 +64,9 @@ func main() {
 			tildeHandler(w, r)
 			return
 		}
-		// Default: serve index.txt at root, 404 everything else
+		// Default: serve landing page at root, 404 everything else
 		if r.URL.Path == "/" && r.Method == http.MethodGet {
-			handler.HandleStaticFile("content/index.txt")(w, r)
+			handler.HandleStaticFile("content/index.html")(w, r)
 			return
 		}
 		http.NotFound(w, r)

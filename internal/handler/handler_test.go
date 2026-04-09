@@ -155,6 +155,149 @@ func TestHandleStaticFile_HTMLFile_ServeWithCorrectContentType_ReturnsTextHTML(t
 	}
 }
 
+func TestHandleStaticFile_PNGFile_ServeWithCorrectContentType_ReturnsImagePNG(t *testing.T) {
+	// Business context: The OG image for social media previews is a PNG file.
+	// HandleStaticFile must serve it with image/png content type so crawlers
+	// recognize it as an image, not a text file.
+	// Scenario: Serve a .png file via HandleStaticFile.
+	// Expected: Content-Type is image/png, status 200, body matches file content.
+
+	dir := t.TempDir()
+	pngPath := dir + "/test.png"
+	// Minimal PNG header (8 bytes signature)
+	pngData := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	os.WriteFile(pngPath, pngData, 0644)
+
+	handler := HandleStaticFile(pngPath)
+	req := httptest.NewRequest("GET", "/og-image.png", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if ct != "image/png" {
+		t.Fatalf("content-type = %q, want image/png", ct)
+	}
+	if w.Body.Len() != len(pngData) {
+		t.Fatalf("body length = %d, want %d", w.Body.Len(), len(pngData))
+	}
+}
+
+func TestLandingPage_OGTags_SocialMediaPreview_ContainsAllRequiredTags(t *testing.T) {
+	// Business context: Social media platforms (Facebook, Twitter/X, LinkedIn,
+	// Discord, Slack) use OG meta tags to render link previews. Missing tags
+	// mean broken or ugly previews, hurting discoverability.
+	// Scenario: Serve content/index.html and verify all required OG meta tags are present.
+	// Expected: Response body contains og:title, og:description, og:image, og:type,
+	// og:url, twitter:card, twitter:title, twitter:description, twitter:image.
+
+	handler := HandleStaticFile("../../content/index.html")
+	req := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	body := w.Body.String()
+
+	requiredTags := []struct {
+		tag    string
+		reason string
+	}{
+		// Open Graph — Facebook, LinkedIn, Discord, Slack
+		{`og:type" content="website"`, "Facebook requires og:type for proper card rendering"},
+		{`og:url" content="https://txtscape.com/"`, "canonical URL for share deduplication"},
+		{`og:title" content="txtscape"`, "title shown in link preview cards"},
+		{`og:description"`, "description shown below title in previews"},
+		{`og:image" content="https://txtscape.com/og-image.png"`, "preview image URL for all OG consumers"},
+		{`og:image:width" content="1200"`, "explicit dimensions prevent layout shift on Facebook"},
+		{`og:image:height" content="630"`, "explicit dimensions prevent layout shift on Facebook"},
+		{`og:image:alt"`, "accessibility text for the preview image"},
+		{`og:site_name" content="txtscape"`, "site name shown above title on Facebook"},
+
+		// Twitter/X
+		{`twitter:card" content="summary_large_image"`, "large image card for maximum visibility on X"},
+		{`twitter:title" content="txtscape"`, "title for Twitter card"},
+		{`twitter:description"`, "description for Twitter card"},
+		{`twitter:image" content="https://txtscape.com/og-image.png"`, "image URL for Twitter card"},
+		{`twitter:image:alt"`, "accessibility text for Twitter card image"},
+	}
+
+	for _, tt := range requiredTags {
+		if !strings.Contains(body, tt.tag) {
+			t.Errorf("missing OG tag %q — %s", tt.tag, tt.reason)
+		}
+	}
+}
+
+func TestLandingPage_OGImage_ReferencedURLMatchesRoute_ImageIsAccessible(t *testing.T) {
+	// Business context: The og:image URL must point to an actual servable image.
+	// If the PNG doesn't exist or the path is wrong, crawlers get a 404 and
+	// render no preview image.
+	// Scenario: Set up a mux with the OG image route and the landing page,
+	// extract the og:image URL, and verify the image is reachable.
+	// Expected: GET /og-image.png returns 200 with image/png content type.
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /og-image.png", HandleStaticFile("../../content/og-image.png"))
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/og-image.png")
+	if err != nil {
+		t.Fatalf("GET /og-image.png: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	ct := resp.Header.Get("Content-Type")
+	if ct != "image/png" {
+		t.Fatalf("content-type = %q, want image/png", ct)
+	}
+}
+
+func TestLandingPage_RootRoute_CrawlerGetsHTML_ReturnsHTMLNotPlainText(t *testing.T) {
+	// Business context: Social media crawlers fetch the root URL. They need HTML
+	// with meta tags, not plain text. If root serves text/plain, no preview renders.
+	// Scenario: Build a mux mimicking main.go's root route, GET /.
+	// Expected: Returns text/html content type with status 200.
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			HandleStaticFile("../../content/index.html")(w, r)
+			return
+		}
+		http.NotFound(w, r)
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/")
+	if err != nil {
+		t.Fatalf("GET /: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	ct := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/html") {
+		t.Fatalf("content-type = %q, want text/html", ct)
+	}
+}
+
 func TestHandleLogin_QueryStringCredentials_PreventURLLeakage_IgnoresQueryParams(t *testing.T) {
 	// Business context: Same as signup — credentials must come from POST body only.
 	// Scenario: POST /login with credentials ONLY in the query string, empty body.

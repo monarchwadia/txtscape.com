@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/txtscape/txtscape.com/internal/auth"
@@ -337,7 +339,8 @@ func serveListing(w http.ResponseWriter, r *http.Request, pageStore *pages.PageS
 	io.WriteString(w, listing)
 }
 
-// HandleStaticFile serves a static .txt file from the filesystem.
+// HandleStaticFile serves a static file from the filesystem,
+// detecting content type from the file extension.
 func HandleStaticFile(path string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := os.ReadFile(path)
@@ -345,7 +348,11 @@ func HandleStaticFile(path string) http.HandlerFunc {
 			writeError(w, http.StatusNotFound, "not found")
 			return
 		}
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		ct := mime.TypeByExtension(filepath.Ext(path))
+		if ct == "" {
+			ct = "application/octet-stream"
+		}
+		w.Header().Set("Content-Type", ct)
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)
 	}
