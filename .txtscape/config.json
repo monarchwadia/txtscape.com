@@ -1,40 +1,40 @@
 {
-  "concerns": [
-    {
-      "folderName": "decisions",
-      "label": "Architecture Decisions",
-      "description": "Record technical and product choices with rationale. One page per decision. When a decision is revisited or reversed, update the original page rather than creating a new one.",
-      "template": "# {title}\n\n## Context\nWhat situation or constraint prompted this decision?\n\n## Decision\nWhat we chose and why.\n\n## Consequences\nWhat follows from this — tradeoffs accepted, doors closed, doors opened."
-    },
-    {
-      "folderName": "roadmap",
-      "label": "Roadmap",
-      "description": "Features and ideas — planned, discussed, or shelved. One page per feature. Update status as work progresses. Includes both txtscape.com platform features and txtscape-mcp tool features."
-    },
-    {
-      "folderName": "learnings",
-      "label": "Learnings",
-      "description": "Insights from TDD cycles, exercise-critique-fix loops, manual testing, and production usage. Patterns that worked, mistakes to avoid, surprising behaviors discovered. Keep entries concise."
-    },
-    {
-      "folderName": "users",
-      "label": "User Signals",
-      "description": "How people actually use txtscape — observed patterns, feedback, feature requests, pain points, and use cases. Includes both MCP tool users (developers configuring AI agents) and platform users (publishers on txtscape.com)."
-    },
-    {
-      "folderName": "references",
-      "label": "References",
-      "description": "External specs, protocols, competitor analysis, and research that inform the project. MCP protocol details, IDE client capabilities, prior art (Gopher, Gemini), relevant standards. Store summaries and key takeaways, not full copies of external docs."
-    },
-    {
-      "folderName": "architecture",
-      "label": "Architecture",
-      "description": "How the system is structured right now. Component boundaries, data flow, package responsibilities, storage design, deployment topology. Covers both products: the txtscape.com platform (Go HTTP server, Postgres, auth/handler/pages packages) and the txtscape-mcp tool (stdio MCP server, flat file storage). Update pages when the structure changes — these should reflect current reality, not history."
-    },
-    {
-      "folderName": "deployment",
-      "label": "Deployment & Operations",
-      "description": "How things get built, released, and run. Railway config, Dockerfile, Makefile targets, environment variables, CI/CD pipelines, GoReleaser setup, DNS, database migrations. Operational runbooks and release checklists. Covers both products."
-    }
-  ]
+    "concerns": [
+        {
+            "folderName": "decisions",
+            "label": "Architecture Decisions",
+            "description": "Record technical and product choices with rationale. One page per decision. When a decision is revisited or reversed, update the original page rather than creating a new one.",
+            "template": "# {title}\n\n## Context\nWhat situation or constraint prompted this decision?\n\n## Decision\nWhat we chose and why.\n\n## Consequences\nWhat follows from this — tradeoffs accepted, doors closed, doors opened."
+        },
+        {
+            "folderName": "roadmap",
+            "label": "Roadmap",
+            "description": "Features and ideas — planned, discussed, or shelved. One page per feature. Update status as work progresses. Includes both txtscape.com platform features and txtscape-mcp tool features."
+        },
+        {
+            "folderName": "learnings",
+            "label": "Learnings",
+            "description": "Insights from TDD cycles, exercise-critique-fix loops, manual testing, and production usage. Patterns that worked, mistakes to avoid, surprising behaviors discovered. Keep entries concise."
+        },
+        {
+            "folderName": "users",
+            "label": "User Signals",
+            "description": "How people actually use txtscape — observed patterns, feedback, feature requests, pain points, and use cases. Includes both MCP tool users (developers configuring AI agents) and platform users (publishers on txtscape.com)."
+        },
+        {
+            "folderName": "references",
+            "label": "References",
+            "description": "External specs, protocols, competitor analysis, and research that inform the project. MCP protocol details, IDE client capabilities, prior art (Gopher, Gemini), relevant standards. Store summaries and key takeaways, not full copies of external docs."
+        },
+        {
+            "folderName": "architecture",
+            "label": "Architecture",
+            "description": "How the system is structured right now. Component boundaries, data flow, package responsibilities, storage design, deployment topology. Covers both products: the txtscape.com platform (Go HTTP server, Postgres, auth/handler/pages packages) and the txtscape-mcp tool (stdio MCP server, flat file storage). Update pages when the structure changes — these should reflect current reality, not history."
+        },
+        {
+            "folderName": "deployment",
+            "label": "Deployment & Operations",
+            "description": "How things get built, released, and run. Railway config, Dockerfile, Makefile targets, environment variables, CI/CD pipelines, GoReleaser setup, DNS, database migrations. Operational runbooks and release checklists. Covers both products."
+        }
+    ]
 }
