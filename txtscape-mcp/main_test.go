@@ -182,6 +182,27 @@ func TestToolsList_DiscoverTools_ReturnsAllTools(t *testing.T) {
 	}
 }
 
+func TestToolsList_GetPageDescription_MentionsHash(t *testing.T) {
+	// Business context: get_page returns _meta.hash for optimistic concurrency.
+	// The tool description should mention this so agents know to use it.
+	// Scenario: Read get_page tool description from tools/list.
+	// Expected: Description contains "hash".
+	s := setupTestServer(t)
+	resp := callMethod(s, "tools/list", nil)
+	result := resp.Result.(map[string]any)
+	tools := result["tools"].([]map[string]any)
+	for _, tool := range tools {
+		if tool["name"] == "get_page" {
+			desc, _ := tool["description"].(string)
+			if !strings.Contains(desc, "hash") {
+				t.Errorf("get_page description should mention hash, got: %s", desc)
+			}
+			return
+		}
+	}
+	t.Fatal("get_page tool not found")
+}
+
 func TestUnknownMethod_ReturnsMethodNotFound(t *testing.T) {
 	// Business context: MCP servers must respond with -32601 for unknown methods
 	// per the JSON-RPC spec, so agents can handle unsupported methods gracefully.
@@ -1074,8 +1095,8 @@ func TestMovePage_SimpleRename_RelocatePage_MovesFile(t *testing.T) {
 	})
 
 	resp := callTool(s, "move_page", map[string]string{
-		"from": "old-name.txt",
-		"to":   "new-name.txt",
+		"path":     "old-name.txt",
+		"new_path": "new-name.txt",
 	})
 	if isToolError(resp) {
 		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
@@ -1113,8 +1134,8 @@ func TestMovePage_AcrossFolders_RelocatePage_CreatesDestFolder(t *testing.T) {
 	})
 
 	resp := callTool(s, "move_page", map[string]string{
-		"from": "draft.txt",
-		"to":   "decisions/finalized.txt",
+		"path":     "draft.txt",
+		"new_path": "decisions/finalized.txt",
 	})
 	if isToolError(resp) {
 		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
@@ -1136,8 +1157,8 @@ func TestMovePage_SourceNotFound_ReturnsError(t *testing.T) {
 	// Expected: Error with "not found" message.
 	s := setupTestServer(t)
 	resp := callTool(s, "move_page", map[string]string{
-		"from": "ghost.txt",
-		"to":   "target.txt",
+		"path":     "ghost.txt",
+		"new_path": "target.txt",
 	})
 	if !isToolError(resp) {
 		t.Fatal("expected error for missing source")
@@ -1164,8 +1185,8 @@ func TestMovePage_DestinationExists_PreventOverwrite_ReturnsError(t *testing.T) 
 	})
 
 	resp := callTool(s, "move_page", map[string]string{
-		"from": "source.txt",
-		"to":   "dest.txt",
+		"path":     "source.txt",
+		"new_path": "dest.txt",
 	})
 	if !isToolError(resp) {
 		t.Fatal("expected error when destination exists")
@@ -1188,8 +1209,8 @@ func TestMovePage_CleansUpEmptySourceFolder(t *testing.T) {
 	})
 
 	callTool(s, "move_page", map[string]string{
-		"from": "old-folder/only-file.txt",
-		"to":   "new-home.txt",
+		"path":     "old-folder/only-file.txt",
+		"new_path": "new-home.txt",
 	})
 
 	// old-folder should be gone
@@ -1197,6 +1218,31 @@ func TestMovePage_CleansUpEmptySourceFolder(t *testing.T) {
 	text := getTextContent(t, resp)
 	if strings.Contains(text, "old-folder") {
 		t.Errorf("empty source folder should be cleaned up, got: %s", text)
+	}
+}
+
+func TestMovePage_ReturnsHash_ForDestination(t *testing.T) {
+	// Business context: After moving a page, the agent should get the new hash
+	// so it can edit the page at its new location without a get_page round-trip.
+	// Scenario: Move a page. Check response has _meta.hash matching get_page.
+	// Expected: _meta.hash is present and correct.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "moveable.txt", "content": "move me",
+	})
+	resp := callTool(s, "move_page", map[string]string{
+		"path": "moveable.txt", "new_path": "moved.txt",
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	hash := getMetaHash(resp)
+	if hash == "" {
+		t.Fatal("expected _meta.hash in move_page response, got none")
+	}
+	getResp := callTool(s, "get_page", map[string]string{"path": "moved.txt"})
+	if got := getMetaHash(getResp); got != hash {
+		t.Errorf("move_page hash %q != get_page hash %q", hash, got)
 	}
 }
 
@@ -1318,6 +1364,29 @@ func TestStrReplacePage_PageNotFound_ReturnsError(t *testing.T) {
 	})
 	if !isToolError(resp) {
 		t.Fatal("expected error for missing page")
+	}
+}
+
+func TestStrReplacePage_EmptyNewStr_SaysDeleted(t *testing.T) {
+	// Business context: When new_str is empty, the old_str is being deleted.
+	// The response should say "deleted" not "replaced" for honesty.
+	// Scenario: Replace a string with empty string.
+	// Expected: Response text contains "deleted".
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "config.txt", "content": "key=value\nextra=stuff\n",
+	})
+	resp := callTool(s, "str_replace_page", map[string]string{
+		"path":    "config.txt",
+		"old_str": "extra=stuff\n",
+		"new_str": "",
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "deleted") {
+		t.Errorf("expected 'deleted' in response for empty new_str, got: %s", text)
 	}
 }
 
@@ -1561,7 +1630,7 @@ func TestSnapshot_Offset_SkipsPages(t *testing.T) {
 	// Business context: When snapshot is truncated at 100 pages, the agent needs
 	// a way to fetch the remaining pages. Offset lets you paginate.
 	// Scenario: Create 5 pages, request snapshot with offset=3.
-	// Expected: Only the last 2 pages are returned.
+	// Expected: Only the last 2 pages are returned, header says "showing 4-5 of 5".
 	s := setupTestServer(t)
 	for i := 0; i < 5; i++ {
 		callTool(s, "put_page", map[string]string{
@@ -1575,9 +1644,13 @@ func TestSnapshot_Offset_SkipsPages(t *testing.T) {
 		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
 	}
 	text := getTextContent(t, resp)
-	// Header should show 5 total pages
-	if !strings.Contains(text, "5 pages") {
-		t.Errorf("header should show total of 5 pages, got: %s", strings.SplitN(text, "\n", 2)[0])
+	// Header should say "showing 4-5 of 5 pages"
+	firstLine := strings.SplitN(text, "\n", 2)[0]
+	if !strings.Contains(firstLine, "showing") {
+		t.Errorf("header should say 'showing' when offset is used, got: %s", firstLine)
+	}
+	if !strings.Contains(firstLine, "of 5") {
+		t.Errorf("header should show total of 5, got: %s", firstLine)
 	}
 	// Only 2 pages in the body (p3.txt and p4.txt)
 	count := strings.Count(text, "===")
@@ -1592,6 +1665,22 @@ func TestSnapshot_Offset_SkipsPages(t *testing.T) {
 	}
 	if strings.Contains(text, "p2.txt") {
 		t.Errorf("p2.txt should be skipped by offset=3, got:\n%s", text)
+	}
+}
+
+func TestSnapshot_NonexistentFolder_ReturnsError(t *testing.T) {
+	// Business context: Snapshot of a folder that doesn't exist should error,
+	// not silently return "(empty)". Agents need to know their path was wrong.
+	// Scenario: Snapshot a folder path that has never been created.
+	// Expected: isError=true with "not found" message.
+	s := setupTestServer(t)
+	resp := callTool(s, "snapshot", map[string]string{"path": "nonexistent"})
+	if !isToolError(resp) {
+		t.Fatalf("expected error for nonexistent folder, got: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "not found") {
+		t.Errorf("expected 'not found' in error, got: %s", text)
 	}
 }
 
@@ -1886,9 +1975,10 @@ func TestPageHistory_Limit_OnlyReturnsNCommits(t *testing.T) {
 }
 
 func TestPageHistory_PageNotFound_ReturnsError(t *testing.T) {
-	// Business context: History for a page with no commits should fail clearly.
-	// Scenario: Page exists on disk but has never been committed (repo has a commit but file isn't tracked).
-	// Expected: "no history" message.
+	// Business context: History for a page that exists on disk but was never
+	// committed should say "not yet committed" — distinct from nonexistent.
+	// Scenario: Page exists on disk but has never been committed.
+	// Expected: "no history" message mentioning the file is not yet committed.
 	s := setupTestServer(t)
 	runGit(t, s.root, "init")
 	runGit(t, s.root, "config", "user.email", "test@test.com")
@@ -1905,9 +1995,39 @@ func TestPageHistory_PageNotFound_ReturnsError(t *testing.T) {
 	})
 
 	resp := callTool(s, "page_history", map[string]string{"path": "uncommitted.txt"})
+	if isToolError(resp) {
+		t.Fatalf("untracked file should not be an error, got: %s", getTextContent(t, resp))
+	}
 	text := getTextContent(t, resp)
 	if !strings.Contains(text, "no history") {
-		t.Errorf("expected 'no history' for uncommitted file, got: %s", text)
+		t.Errorf("expected 'no history' for untracked file, got: %s", text)
+	}
+	if !strings.Contains(text, "not yet committed") {
+		t.Errorf("expected 'not yet committed' distinction, got: %s", text)
+	}
+}
+
+func TestPageHistory_NonexistentFile_ReturnsError(t *testing.T) {
+	// Business context: page_history on a file that doesn't exist on disk should
+	// return isError=true, not a misleading "no history" success.
+	// Scenario: Query history for a path that was never created.
+	// Expected: isError=true with "not found" message.
+	s := setupTestServer(t)
+	runGit(t, s.root, "init")
+	runGit(t, s.root, "config", "user.email", "test@test.com")
+	runGit(t, s.root, "config", "user.name", "Test")
+	dummyPath := filepath.Join(s.root, ".gitkeep")
+	os.WriteFile(dummyPath, []byte(""), 0o644)
+	runGit(t, s.root, "add", ".gitkeep")
+	runGit(t, s.root, "commit", "-m", "init")
+
+	resp := callTool(s, "page_history", map[string]string{"path": "ghost.txt"})
+	if !isToolError(resp) {
+		t.Fatalf("expected error for nonexistent file, got: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "not found") {
+		t.Errorf("expected 'not found' in error, got: %s", text)
 	}
 }
 

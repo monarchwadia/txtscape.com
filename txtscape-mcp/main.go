@@ -184,7 +184,7 @@ func toolDefinitions() []map[string]any {
 	return []map[string]any{
 		{
 			"name":        "get_page",
-			"description": "Read a .txt page from project memory.",
+			"description": "Read a .txt page from project memory. Returns content and a _meta.hash for optimistic concurrency (pass to put_page/str_replace_page/append_page as expected_hash).",
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -260,16 +260,16 @@ func toolDefinitions() []map[string]any {
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"from": map[string]any{
+					"path": map[string]any{
 						"type":        "string",
 						"description": "Current page path. Must end in .txt.",
 					},
-					"to": map[string]any{
+					"new_path": map[string]any{
 						"type":        "string",
 						"description": "New page path. Must end in .txt. Folder names: lowercase alphanumeric/hyphens/underscores, max 50 chars. Max 10 levels deep.",
 					},
 				},
-				"required": []string{"from", "to"},
+				"required": []string{"path", "new_path"},
 			},
 		},
 		{
@@ -619,25 +619,25 @@ func (s *server) handleDeletePage(id json.RawMessage, args json.RawMessage) json
 
 func (s *server) handleMovePage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
 	var a struct {
-		From string `json:"from"`
-		To   string `json:"to"`
+		Path    string `json:"path"`
+		NewPath string `json:"new_path"`
 	}
 	if err := json.Unmarshal(args, &a); err != nil {
 		return toolError(id, "invalid arguments")
 	}
-	if a.From == "" {
-		return toolError(id, "from is required")
+	if a.Path == "" {
+		return toolError(id, "path is required")
 	}
-	if a.To == "" {
-		return toolError(id, "to is required")
+	if a.NewPath == "" {
+		return toolError(id, "new_path is required")
 	}
-	cleanFrom, err := validatePath(a.From)
+	cleanFrom, err := validatePath(a.Path)
 	if err != nil {
-		return toolError(id, "from: "+err.Error())
+		return toolError(id, "path: "+err.Error())
 	}
-	cleanTo, err := validatePath(a.To)
+	cleanTo, err := validatePath(a.NewPath)
 	if err != nil {
-		return toolError(id, "to: "+err.Error())
+		return toolError(id, "new_path: "+err.Error())
 	}
 
 	fromPath := filepath.Join(s.pagesRoot(), filepath.FromSlash(cleanFrom))
@@ -645,11 +645,11 @@ func (s *server) handleMovePage(id json.RawMessage, args json.RawMessage) jsonrp
 
 	// Source must exist
 	if _, err := os.Stat(fromPath); os.IsNotExist(err) {
-		return toolError(id, "page not found: "+a.From)
+		return toolError(id, "page not found: "+a.Path)
 	}
 	// Destination must NOT exist
 	if _, err := os.Stat(toPath); err == nil {
-		return toolError(id, "destination already exists: "+a.To)
+		return toolError(id, "destination already exists: "+a.NewPath)
 	}
 
 	// Create destination directory
@@ -672,7 +672,12 @@ func (s *server) handleMovePage(id json.RawMessage, args json.RawMessage) jsonrp
 		dir = filepath.Dir(dir)
 	}
 
-	return toolSuccess(id, "page moved: "+a.From+" → "+a.To)
+	// Read destination to return hash
+	data, err := os.ReadFile(toPath)
+	if err != nil {
+		return toolSuccess(id, "page moved: "+a.Path+" → "+a.NewPath)
+	}
+	return toolSuccessWithHash(id, "page moved: "+a.Path+" → "+a.NewPath, data)
 }
 
 func (s *server) handleListPages(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
@@ -894,7 +899,11 @@ func (s *server) handleStrReplacePage(id json.RawMessage, args json.RawMessage) 
 
 	// Build a diff snippet showing ±3 lines around the replacement
 	snippet := diffSnippet(content, newContent, a.OldStr, a.NewStr)
-	return toolSuccessWithHash(id, "replaced in: "+a.Path+"\n\n"+snippet, []byte(newContent))
+	verb := "replaced in: "
+	if a.NewStr == "" {
+		verb = "deleted from: "
+	}
+	return toolSuccessWithHash(id, verb+a.Path+"\n\n"+snippet, []byte(newContent))
 }
 
 func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
@@ -915,6 +924,9 @@ func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrp
 			}
 		}
 		root = filepath.Join(root, filepath.FromSlash(a.Path))
+		if _, err := os.Stat(root); os.IsNotExist(err) {
+			return toolError(id, "directory not found: "+a.Path)
+		}
 	}
 
 	const maxPages = 100
@@ -955,14 +967,18 @@ func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrp
 		return toolSuccess(id, fmt.Sprintf("(empty — offset %d past %d pages)", start, len(pages)))
 	}
 
-	var buf strings.Builder
-	// Summary header
-	buf.WriteString(fmt.Sprintf("(%d pages, %d bytes)\n\n", len(pages), totalBytes))
-
 	end := start + maxPages
 	truncated := end < len(pages)
 	if end > len(pages) {
 		end = len(pages)
+	}
+
+	var buf strings.Builder
+	// Summary header
+	if start == 0 && !truncated {
+		buf.WriteString(fmt.Sprintf("(%d pages, %d bytes)\n\n", len(pages), totalBytes))
+	} else {
+		buf.WriteString(fmt.Sprintf("(showing %d–%d of %d pages, %d bytes total)\n\n", start+1, end, len(pages), totalBytes))
 	}
 
 	for i := start; i < end; i++ {
@@ -1096,6 +1112,12 @@ func (s *server) handlePageHistory(id json.RawMessage, args json.RawMessage) jso
 		a.Limit = 20
 	}
 
+	// Check if the file exists on disk
+	fullPath := filepath.Join(s.pagesRoot(), filepath.FromSlash(clean))
+	if _, statErr := os.Stat(fullPath); os.IsNotExist(statErr) {
+		return toolError(id, "page not found: "+a.Path)
+	}
+
 	relPath := filepath.Join(pagesDir, filepath.FromSlash(clean))
 
 	gitArgs := []string{"-C", s.root, "log", "--follow", fmt.Sprintf("-n%d", a.Limit)}
@@ -1111,7 +1133,7 @@ func (s *server) handlePageHistory(id json.RawMessage, args json.RawMessage) jso
 		return toolError(id, "git log failed: "+strings.TrimSpace(out))
 	}
 	if strings.TrimSpace(out) == "" {
-		return toolSuccess(id, "no history found for: "+a.Path)
+		return toolSuccess(id, "no history found for: "+a.Path+" (file exists but is not yet committed to git)")
 	}
 	return toolSuccess(id, out)
 }
