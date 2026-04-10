@@ -1,6 +1,6 @@
 ---
 name: write
-description: "Write code or tests for txtscape. USE WHEN: user says 'write', 'test', 'implement', 'add', 'build', 'create handler', 'create test'. Supports: /write tests, /write handler, /write plan, /write what's missing. Auto-detects scope from open file. Follows red/green TDD and walking skeleton methodology — builds incrementally, one small step at a time."
+description: "Write code or tests for txtscape. USE WHEN: user says 'write', 'test', 'implement', 'add', 'build', 'create handler', 'create test', 'exercise', 'ergonomics', 'take it for a drive', 'critique'. Supports: /write tests, /write handler, /write plan, /write what's missing, /write exercise. Auto-detects scope from open file. Follows red/green TDD and walking skeleton methodology — builds incrementally, one small step at a time."
 ---
 
 # /write
@@ -42,6 +42,7 @@ If ambiguous, ask using the ask-questions tool.
 | `/write handler`, `/write code`, `/write migration` | Production code | `get_page` → `references/skills/shared/code.txt` |
 | `/write plan` | Preview only — describe what you'd do, don't act | All references as needed |
 | `/write what's missing` | Gap analysis — scan code vs tests, find holes | All references as needed |
+| `/write exercise` | Tool ergonomics — exercise→critique→fix cycle | `get_page` → `references/skills/shared/exercise.txt` |
 
 ### Auto-detect test level
 

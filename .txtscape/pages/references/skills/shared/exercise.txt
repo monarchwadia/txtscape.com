@@ -1,0 +1,82 @@
+# Exercise: Tool Ergonomics Cycle
+
+The exercise→critique→fix cycle for improving MCP tool quality. This is how we polish tools after initial implementation.
+
+## When to use
+
+After a tool or set of tools is implemented and has passing tests, but hasn't been stress-tested with realistic usage patterns. The goal is to find edge cases, confusing behaviors, missing validations, and rough UX that unit tests don't catch.
+
+## The cycle
+
+### Phase 1: Exercise
+
+Build a realistic end-to-end scenario that exercises the tools as a real user/agent would. This means:
+
+1. Create a fresh temporary workspace (e.g. `/tmp/mcp-exercise-NNNN`)
+2. Initialize git (tools may depend on it)
+3. If testing concerns, write a config.json
+4. Write a bash script that calls the MCP binary via stdin/stdout JSON-RPC
+5. Cover ALL tools, not just the one you're focused on — regressions hide in interactions
+6. Test happy paths AND edge cases:
+   - Empty states (no pages yet)
+   - Boundary inputs (max path depth, large content, special characters)
+   - Error cases (missing pages, invalid paths, conflict detection)
+   - Sequences that matter (create → edit → search → move → delete)
+7. Each test step should assert specific output using grep/jq
+8. Print PASS/FAIL for each step
+
+The exercise script is a throwaway — it doesn't need to be elegant.
+
+### Phase 2: Critique
+
+After running the exercise, review every output critically:
+
+1. **Correctness**: Did the tool return the right data?
+2. **Clarity**: Is the output/error message understandable?
+3. **Consistency**: Do similar operations behave similarly?
+4. **Edge cases**: What happens at boundaries?
+5. **Ergonomics**: Would an agent find this easy to use?
+
+Classify findings:
+- **Bug**: Wrong behavior, must fix
+- **Nit**: Cosmetic or minor UX issue, should fix
+- **Enhancement**: Would be nice, can defer
+- **By design**: Looks odd but is correct, document why
+
+### Phase 3: Fix
+
+For each bug and nit, fix via TDD:
+
+1. Write a failing test that reproduces the issue
+2. Fix the code to pass the test
+3. Run full test suite to check for regressions
+4. Rebuild the binary
+5. Optionally re-run the exercise script to confirm
+
+### Phase 4: Record
+
+After the cycle:
+- Store significant findings in `learnings/` via txtscape
+- If a design decision was made (e.g. "this is correct by design"), record in `decisions/`
+- Update architecture pages if the fix changed component behavior
+
+## Tips
+
+- Run multiple cycles. Each one catches things the previous missed.
+- Vary the scenario — different folder structures, different content, different sequences.
+- Pay attention to the FIRST thing a new user would do. First impressions matter most.
+- If you find yourself explaining why something works a certain way, it probably needs better error messages.
+
+## JSON-RPC helper pattern
+
+To call the MCP binary in a script:
+
+```bash
+call_mcp() {
+  local method="$1" params="$2" id="$3"
+  echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"method\":\"$method\",\"params\":$params}" | \
+    timeout 5 "$BINARY" 2>/dev/null | head -1
+}
+```
+
+Initialize first, then call tools via `tools/call` with `name` and `arguments`.

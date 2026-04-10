@@ -1,0 +1,25 @@
+# Local GUI for .txtscape
+
+Status: not started
+
+A zero-dependency Go web application that serves a local GUI for exploring the .txtscape directory.
+
+## What it does
+- Browse pages by folder with concern-aware navigation
+- Search across all pages (full-text)
+- Concerns viewer — each concern displayed with its color (color-coded via config.json)
+- Read and preview pages with markdown rendering
+
+## Constraints
+- Zero external Go dependencies — stdlib only
+- HTML/CSS/JS embedded in the Go binary
+- Served locally (localhost), not exposed to the internet
+- Simple: this is a read-only explorer, not an editor
+
+## Config extension
+Add optional "color" field to each concern in config.json, e.g. "#4a9eff". GUI uses these for visual grouping.
+
+## Open questions
+- Port selection: fixed port or auto-find available?
+- Should it live in the txtscape-mcp module or be a separate binary?
+- Live reload / file watching, or manual refresh?

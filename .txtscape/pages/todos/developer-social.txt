@@ -1,0 +1,35 @@
+# Developer Social Network via txtscape
+
+Status: not started
+
+Users read each other's public updates, follow projects they care about, and get LLM-generated digests of activity from people they follow. Decentralized by nature — content lives on txtscape.com as plain .txt files, agents do the reading and summarizing.
+
+## Vision
+A social layer for developers, powered entirely by agents reading plain text. No algorithmic feed, no engagement metrics, no ads. Agents surf txtscape.com/~username/ pages, find interesting updates, and bring digests back to the developer. The local GUI can surface this too.
+
+## How it works
+- Users publish project updates to txtscape.com (see: public-updates todo)
+- Other users' agents discover and read these via surf()
+- Agents summarize what's interesting and surface it locally
+- The local GUI can show a feed of followed projects
+- Follow lists could be stored locally in .txtscape (e.g. follows.txt)
+
+## Decentralization
+- Content is plain .txt on HTTPS — anyone can mirror, cache, archive
+- No central algorithm decides what you see — your agent does
+- Follow lists are local, not stored on a server
+- No engagement tracking, no metrics, no advertising
+- The protocol is simple enough that alternative servers can exist
+
+## What "follow" means (to figure out later)
+- Local follow list → agent periodically surfs those profiles
+- Discovery mechanism — how do you find people to follow?
+- Directory page on txtscape.com? Or purely word of mouth / links?
+- Notification model — pull only, or some push mechanism?
+
+## Open questions
+- How does an agent discover new/updated content efficiently? (If-Modified-Since? RSS-like index?)
+- Privacy: should users be able to see who follows them? Probably not.
+- Digest frequency and format
+- How does the local GUI present the social feed?
+- Moderation / blocking / muting

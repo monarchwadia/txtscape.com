@@ -35,6 +35,11 @@
             "folderName": "deployment",
             "label": "Deployment & Operations",
             "description": "How things get built, released, and run. Railway config, Dockerfile, Makefile targets, environment variables, CI/CD pipelines, GoReleaser setup, DNS, database migrations. Operational runbooks and release checklists. Covers both products."
+        },
+        {
+            "folderName": "todos",
+            "label": "Todos",
+            "description": "Plans, next steps, and things to build. One page per initiative. Update status as work starts and completes. Remove or archive when done."
         }
     ]
 }

@@ -1,0 +1,27 @@
+# Public Project Updates on txtscape.com
+
+Status: not started
+
+Encourage users to publish public updates about their projects to txtscape.com. The agent can draft and suggest updates, but MUST ask explicit permission before publishing anything.
+
+## Vision
+Developers keep project memory locally via txtscape-mcp. Periodically, the agent suggests publishing a public update — a digest of recent decisions, progress, learnings — to their txtscape.com profile. This creates a public trail of real development work.
+
+## Safety requirements
+- Agent must ALWAYS ask permission before publishing
+- User must see the full content before it goes live
+- No private pages, secrets, credentials, or sensitive info should leak into public updates
+- Consider a review/confirm flow: agent drafts → user approves → publish
+- Think about revocation — easy delete of published content
+
+## How it connects
+- Local .txtscape pages are the source material
+- Agent summarizes/curates from local pages into a public post
+- Published to txtscape.com/~username/ as .txt files
+- Other users' agents can surf these updates
+
+## Open questions
+- What triggers an update suggestion? Time-based? Milestone-based? Manual?
+- Should there be a "public" concern folder locally that maps to published content?
+- Content format for updates — structured template or freeform?
+- Rate limiting on publish frequency?
