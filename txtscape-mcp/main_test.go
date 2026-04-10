@@ -601,6 +601,37 @@ func TestSearchPages_Regex_DotStar_MatchesPattern(t *testing.T) {
 	}
 }
 
+func TestSearchPages_PathAndContentMatch_NoDuplicate(t *testing.T) {
+	// Business context: When a regex matches both the file path and the first line,
+	// the path match preview already shows line 1. A redundant content match on
+	// line 1 would be noisy. Other content matches deeper in the file are fine.
+	// Scenario: File "flat-files.txt" with first line "# Flat Files". Search "flat.*files".
+	// Expected: Path match appears, line 1 is NOT duplicated as a separate content match.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "decisions/flat-files.txt",
+		"content": "# Flat Files\n\nWe use flat files.\n",
+	})
+
+	resp := callTool(s, "search_pages", map[string]any{
+		"query":   "flat.*files",
+		"isRegex": true,
+	})
+	text := getTextContent(t, resp)
+	// Line 1 content should NOT appear as a separate "(line 1)" match
+	if strings.Contains(text, "(line 1)") {
+		t.Errorf("line 1 should not be a separate match when path already matched:\n%s", text)
+	}
+	// Path match should still be there
+	if !strings.Contains(text, "(path match)") {
+		t.Errorf("expected path match, got:\n%s", text)
+	}
+	// Line 3 content match is fine (different content)
+	if !strings.Contains(text, "(line 3)") {
+		t.Errorf("expected deeper content match to still appear, got:\n%s", text)
+	}
+}
+
 func TestSearchPages_Regex_InvalidPattern_ReturnsError(t *testing.T) {
 	// Business context: Bad regex should produce a clear error, not a panic.
 	// Scenario: Invalid regex pattern.
@@ -1567,13 +1598,32 @@ func TestSnapshot_Subfolder_OnlyThatSubtree(t *testing.T) {
 
 func TestSnapshot_Empty_ReturnsMessage(t *testing.T) {
 	// Business context: Snapshot of empty memory should be clear.
-	// Scenario: Snapshot with no pages.
-	// Expected: "(empty)" message.
+	// Scenario: Snapshot with no pages at root.
+	// Expected: "(no pages yet)" message distinct from subfolder empty.
 	s := setupTestServer(t)
 	resp := callTool(s, "snapshot", map[string]string{})
 	text := getTextContent(t, resp)
-	if !strings.Contains(text, "empty") {
-		t.Errorf("expected 'empty' message, got: %s", text)
+	if text != "(no pages yet)" {
+		t.Errorf("expected '(no pages yet)', got: %s", text)
+	}
+}
+
+func TestSnapshot_EmptySubfolder_DistinctMessage(t *testing.T) {
+	// Business context: An existing but empty subfolder should say so,
+	// distinctly from root empty.
+	// Scenario: Create a page in decisions/, then delete it, leaving an empty dir.
+	// Expected: "(no pages in decisions/)" — different from root "(no pages yet)".
+	s := setupTestServer(t)
+	// Create and delete to leave an empty directory
+	callTool(s, "put_page", map[string]string{"path": "decisions/temp.txt", "content": "temporary"})
+	callTool(s, "delete_page", map[string]string{"path": "decisions/temp.txt"})
+	// Recreate the empty dir since delete cleans up
+	os.MkdirAll(filepath.Join(s.root, ".txtscape", "pages", "decisions"), 0o755)
+
+	resp := callTool(s, "snapshot", map[string]string{"path": "decisions"})
+	text := getTextContent(t, resp)
+	if text != "(no pages in decisions/)" {
+		t.Errorf("expected '(no pages in decisions/)', got: %s", text)
 	}
 }
 

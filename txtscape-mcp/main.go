@@ -791,7 +791,9 @@ func (s *server) handleSearchPages(id json.RawMessage, args json.RawMessage) jso
 		relPath = filepath.ToSlash(relPath)
 
 		// Match against the file path itself
+		pathMatched := false
 		if matches(relPath) {
+			pathMatched = true
 			if matchCount > 0 {
 				results.WriteString("\n")
 			}
@@ -807,6 +809,10 @@ func (s *server) handleSearchPages(id json.RawMessage, args json.RawMessage) jso
 
 		for i, line := range lines {
 			if matches(line) {
+				// Skip first line if path already matched (preview already shows it)
+				if pathMatched && i == 0 {
+					continue
+				}
 				if matchCount > 0 {
 					results.WriteString("\n")
 				}
@@ -955,7 +961,10 @@ func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrp
 	})
 
 	if len(pages) == 0 {
-		return toolSuccess(id, "(empty)")
+		if a.Path != "" && a.Path != "/" {
+			return toolSuccess(id, fmt.Sprintf("(no pages in %s/)", strings.Trim(a.Path, "/")))
+		}
+		return toolSuccess(id, "(no pages yet)")
 	}
 
 	// Apply offset
