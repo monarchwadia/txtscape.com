@@ -47,10 +47,69 @@ var (
 )
 
 const (
-	maxDepth = 10
-	maxSize  = 1048576 // 1MB
-	pagesDir = ".txtscape/pages"
+	maxDepth   = 10
+	maxSize    = 1048576 // 1MB
+	pagesDir   = ".txtscape/pages"
+	configFile = ".txtscape/config.json"
 )
+
+// --- Concerns config ---
+
+type concern struct {
+	FolderName  string `json:"folderName"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+	Template    string `json:"template,omitempty"`
+}
+
+type txtscapeConfig struct {
+	Concerns []concern `json:"concerns"`
+}
+
+func (s *server) loadConfig() *txtscapeConfig {
+	data, err := os.ReadFile(filepath.Join(s.root, configFile))
+	if err != nil {
+		return nil
+	}
+	var cfg txtscapeConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil
+	}
+	return &cfg
+}
+
+const baseInstructions = "txtscape is a committable project memory. " +
+	"Use put_page to store decisions, patterns, and knowledge as .txt files. " +
+	"Use search_pages to find relevant memories. " +
+	"Use list_pages to browse the directory tree with previews. " +
+	"Files are plain text with markdown formatting. " +
+	"All pages are stored in .txtscape/pages/ and should be committed to git. " +
+	"Path rules: files must end in .txt, folder names are lowercase alphanumeric/hyphens/underscores (max 50 chars each), max 10 folder levels deep. " +
+	"File size limit: 1MB per page. Search returns up to 100 matches. " +
+	"Use str_replace_page for surgical edits (old_str must match exactly once). " +
+	"Use snapshot to load all pages in one call. " +
+	"Use related_pages to discover cross-references between pages. " +
+	"Use page_history to see git commit history for a page. " +
+	"get_page returns a hash for optimistic concurrency — pass expected_hash to put_page to prevent stale overwrites."
+
+func (s *server) buildInstructions() string {
+	cfg := s.loadConfig()
+	if cfg == nil || len(cfg.Concerns) == 0 {
+		return baseInstructions
+	}
+
+	var b strings.Builder
+	b.WriteString(baseInstructions)
+	b.WriteString("\n\nThis project's memory is organized into the following concerns:\n")
+	for _, c := range cfg.Concerns {
+		b.WriteString(fmt.Sprintf("- %s/ (%s): %s\n", c.FolderName, c.Label, c.Description))
+		if c.Template != "" {
+			b.WriteString(fmt.Sprintf("  Template for new pages:\n  %s\n", c.Template))
+		}
+	}
+	b.WriteString("Pages can also exist outside of concern folders for ad-hoc notes.")
+	return b.String()
+}
 
 func validatePath(raw string) (string, error) {
 	if raw == "" {
@@ -140,19 +199,7 @@ func (s *server) handleRequest(req jsonrpcRequest) jsonrpcResponse {
 					"name":    "txtscape",
 					"version": "0.1.0",
 				},
-				"instructions": "txtscape is a committable project memory. " +
-					"Use put_page to store decisions, patterns, and knowledge as .txt files. " +
-					"Use search_pages to find relevant memories. " +
-					"Use list_pages to browse the directory tree with previews. " +
-					"Files are plain text with markdown formatting. " +
-					"All pages are stored in .txtscape/pages/ and should be committed to git. " +
-					"Path rules: files must end in .txt, folder names are lowercase alphanumeric/hyphens/underscores (max 50 chars each), max 10 folder levels deep. " +
-					"File size limit: 1MB per page. Search returns up to 100 matches. " +
-					"Use str_replace_page for surgical edits (old_str must match exactly once). " +
-					"Use snapshot to load all pages in one call. " +
-					"Use related_pages to discover cross-references between pages. " +
-					"Use page_history to see git commit history for a page. " +
-					"get_page returns a hash for optimistic concurrency — pass expected_hash to put_page to prevent stale overwrites.",
+				"instructions": s.buildInstructions(),
 			},
 		}
 

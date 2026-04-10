@@ -2324,3 +2324,168 @@ func lastLine(s string) string {
 	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
 	return lines[len(lines)-1]
 }
+
+// --- Concerns config tests ---
+
+func getInstructions(t *testing.T, resp jsonrpcResponse) string {
+	t.Helper()
+	result, ok := resp.Result.(map[string]any)
+	if !ok {
+		t.Fatal("result is not a map")
+	}
+	inst, ok := result["instructions"].(string)
+	if !ok {
+		t.Fatal("instructions is not a string")
+	}
+	return inst
+}
+
+func TestInitialize_WithConcerns_InstructionsIncludeConcernDescriptions(t *testing.T) {
+	// Business context: When a project has declared concerns in config.json,
+	// agents should see the taxonomy in instructions so they know how memory is organized.
+	// Scenario: config.json has two concerns: decisions and customers.
+	// Expected: instructions string includes both concern labels and descriptions.
+	s := setupTestServer(t)
+
+	configDir := filepath.Join(s.root, ".txtscape")
+	config := map[string]any{
+		"concerns": []map[string]string{
+			{"folderName": "decisions", "label": "Architecture Decisions", "description": "Record choices between alternatives with rationale"},
+			{"folderName": "customers", "label": "Customer Signals", "description": "Feedback, feature requests, churn reasons"},
+		},
+	}
+	data, _ := json.Marshal(config)
+	os.WriteFile(filepath.Join(configDir, "config.json"), data, 0o644)
+
+	resp := callMethod(s, "initialize", nil)
+	inst := getInstructions(t, resp)
+
+	if !strings.Contains(inst, "Architecture Decisions") {
+		t.Errorf("expected instructions to contain 'Architecture Decisions', got:\n%s", inst)
+	}
+	if !strings.Contains(inst, "Record choices between alternatives with rationale") {
+		t.Errorf("expected instructions to contain decisions description, got:\n%s", inst)
+	}
+	if !strings.Contains(inst, "Customer Signals") {
+		t.Errorf("expected instructions to contain 'Customer Signals', got:\n%s", inst)
+	}
+	if !strings.Contains(inst, "decisions/") {
+		t.Errorf("expected instructions to contain 'decisions/' folder reference, got:\n%s", inst)
+	}
+}
+
+func TestInitialize_NoConcerns_StaticInstructions(t *testing.T) {
+	// Business context: Projects without config.json should work exactly as before.
+	// Scenario: No config.json exists.
+	// Expected: instructions string is the existing static text.
+	s := setupTestServer(t)
+
+	resp := callMethod(s, "initialize", nil)
+	inst := getInstructions(t, resp)
+
+	if !strings.Contains(inst, "committable project memory") {
+		t.Errorf("expected static instructions, got:\n%s", inst)
+	}
+	// Should NOT contain concern-specific language
+	if strings.Contains(inst, "organized into the following concerns") {
+		t.Errorf("should not mention concerns when no config exists")
+	}
+}
+
+func TestInitialize_ConcernWithTemplate_InstructionsIncludeTemplate(t *testing.T) {
+	// Business context: Templates give agents a starting structure for new pages
+	// in a concern folder, reducing inconsistency.
+	// Scenario: A concern with a template field.
+	// Expected: Template text appears in instructions for that concern.
+	s := setupTestServer(t)
+
+	configDir := filepath.Join(s.root, ".txtscape")
+	config := map[string]any{
+		"concerns": []map[string]string{
+			{
+				"folderName":  "decisions",
+				"label":       "Decisions",
+				"description": "Choices with rationale",
+				"template":    "# {title}\n\nContext:\nOptions:\nChosen:\nTradeoff:",
+			},
+		},
+	}
+	data, _ := json.Marshal(config)
+	os.WriteFile(filepath.Join(configDir, "config.json"), data, 0o644)
+
+	resp := callMethod(s, "initialize", nil)
+	inst := getInstructions(t, resp)
+
+	if !strings.Contains(inst, "Template for new pages:") {
+		t.Errorf("expected template header in instructions, got:\n%s", inst)
+	}
+	if !strings.Contains(inst, "# {title}") {
+		t.Errorf("expected template content in instructions, got:\n%s", inst)
+	}
+}
+
+func TestInitialize_ConcernWithoutTemplate_NoTemplateInInstructions(t *testing.T) {
+	// Business context: Template is optional — concerns without templates should
+	// not have spurious template lines.
+	// Scenario: A concern with no template field.
+	// Expected: No "Template for new pages:" line in instructions.
+	s := setupTestServer(t)
+
+	configDir := filepath.Join(s.root, ".txtscape")
+	config := map[string]any{
+		"concerns": []map[string]string{
+			{"folderName": "research", "label": "Research", "description": "Technical findings"},
+		},
+	}
+	data, _ := json.Marshal(config)
+	os.WriteFile(filepath.Join(configDir, "config.json"), data, 0o644)
+
+	resp := callMethod(s, "initialize", nil)
+	inst := getInstructions(t, resp)
+
+	if strings.Contains(inst, "Template for new pages:") {
+		t.Errorf("should not contain template line when template is empty")
+	}
+	if !strings.Contains(inst, "research/ (Research): Technical findings") {
+		t.Errorf("expected concern description, got:\n%s", inst)
+	}
+}
+
+func TestInitialize_MalformedConfig_FallsBackToStaticInstructions(t *testing.T) {
+	// Business context: A broken config.json should not crash the server or
+	// produce empty instructions. Degrade gracefully.
+	// Scenario: config.json contains invalid JSON.
+	// Expected: Static instructions returned as if no config exists.
+	s := setupTestServer(t)
+
+	configDir := filepath.Join(s.root, ".txtscape")
+	os.WriteFile(filepath.Join(configDir, "config.json"), []byte(`{invalid json`), 0o644)
+
+	resp := callMethod(s, "initialize", nil)
+	inst := getInstructions(t, resp)
+
+	if !strings.Contains(inst, "committable project memory") {
+		t.Errorf("expected static instructions on malformed config, got:\n%s", inst)
+	}
+	if strings.Contains(inst, "organized into the following concerns") {
+		t.Errorf("should not mention concerns when config is malformed")
+	}
+}
+
+func TestInitialize_EmptyConcernsArray_StaticInstructions(t *testing.T) {
+	// Business context: A config with an empty concerns array is valid but
+	// should not add concern text.
+	// Scenario: config.json exists with "concerns": [].
+	// Expected: Static instructions only.
+	s := setupTestServer(t)
+
+	configDir := filepath.Join(s.root, ".txtscape")
+	os.WriteFile(filepath.Join(configDir, "config.json"), []byte(`{"concerns":[]}`), 0o644)
+
+	resp := callMethod(s, "initialize", nil)
+	inst := getInstructions(t, resp)
+
+	if strings.Contains(inst, "organized into the following concerns") {
+		t.Errorf("should not mention concerns when array is empty")
+	}
+}

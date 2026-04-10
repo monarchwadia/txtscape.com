@@ -1,0 +1,26 @@
+# Concerns: configurable memory taxonomy
+
+Status: Accepted
+Date: 2026-04-10
+
+## Context
+Agents don't know why folders exist or what belongs in them. Different
+projects need different memory shapes — a startup needs customers/ and
+pricing/, an infra project needs runbooks/ and incidents/.
+
+## Decision
+Add optional .txtscape/config.json with a "concerns" array. Each concern
+has folderName, label, description, and optional template. Concerns map
+to folders inside .txtscape/pages/ — NOT a separate content tree.
+
+On initialize, if config.json exists, concern descriptions are appended
+to the instructions string. This means every MCP client gets the taxonomy
+automatically with zero extra tool calls.
+
+## Consequences
+- Zero tool changes — all existing tools work with concern folders
+- Agents see concern taxonomy in instructions at session start
+- Templates give structure hints for new pages in concern folders
+- Graceful degradation: no config → static instructions (backward compatible)
+- Malformed config → falls back to static instructions (no crash)
+- Empty concerns array → no concern text appended
