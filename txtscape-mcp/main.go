@@ -232,6 +232,10 @@ func toolDefinitions() []map[string]any {
 						"type":        "string",
 						"description": "Text to append to the end of the page.",
 					},
+					"expected_hash": map[string]any{
+						"type":        "string",
+						"description": "Optional. SHA-256 hash from get_page for optimistic concurrency.",
+					},
 				},
 				"required": []string{"path", "content"},
 			},
@@ -321,6 +325,10 @@ func toolDefinitions() []map[string]any {
 						"type":        "string",
 						"description": "The replacement string.",
 					},
+					"expected_hash": map[string]any{
+						"type":        "string",
+						"description": "Optional. SHA-256 hash from get_page for optimistic concurrency.",
+					},
 				},
 				"required": []string{"path", "old_str", "new_str"},
 			},
@@ -354,13 +362,21 @@ func toolDefinitions() []map[string]any {
 		},
 		{
 			"name":        "page_history",
-			"description": "Show the git commit history for a page. Returns commit hashes, dates, and messages. Requires the project to be a git repository with committed pages.",
+			"description": "Show the git commit history for a page. Returns commit hashes, dates, and messages. Set include_diff=true to see what changed in each commit. Requires the project to be a git repository.",
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"path": map[string]any{
 						"type":        "string",
 						"description": "Page path to show history for. Must end in .txt.",
+					},
+					"include_diff": map[string]any{
+						"type":        "boolean",
+						"description": "If true, include the patch/diff for each commit. Default: false.",
+					},
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Maximum number of commits to return. Default: 20.",
 					},
 				},
 				"required": []string{"path"},
@@ -444,7 +460,9 @@ func (s *server) handleGetPage(id json.RawMessage, args json.RawMessage) jsonrpc
 		Result: map[string]any{
 			"content": []map[string]any{
 				{"type": "text", "text": string(data)},
-				{"type": "text", "text": "hash:" + hashHex},
+			},
+			"_meta": map[string]any{
+				"hash": hashHex,
 			},
 		},
 	}
@@ -505,8 +523,9 @@ func (s *server) handlePutPage(id json.RawMessage, args json.RawMessage) jsonrpc
 
 func (s *server) handleAppendPage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
 	var a struct {
-		Path    string `json:"path"`
-		Content string `json:"content"`
+		Path         string `json:"path"`
+		Content      string `json:"content"`
+		ExpectedHash string `json:"expected_hash"`
 	}
 	if err := json.Unmarshal(args, &a); err != nil {
 		return toolError(id, "invalid arguments")
@@ -529,6 +548,14 @@ func (s *server) handleAppendPage(id json.RawMessage, args json.RawMessage) json
 	isNew := os.IsNotExist(readErr)
 	if readErr != nil && !isNew {
 		return toolError(id, "reading page: "+readErr.Error())
+	}
+
+	// Optimistic concurrency check
+	if a.ExpectedHash != "" && !isNew {
+		hash := sha256.Sum256(existing)
+		if hex.EncodeToString(hash[:]) != a.ExpectedHash {
+			return toolError(id, "hash mismatch: page was modified since last read")
+		}
 	}
 
 	newContent := append(existing, []byte(a.Content)...)
@@ -807,9 +834,10 @@ func (s *server) handleSearchPages(id json.RawMessage, args json.RawMessage) jso
 
 func (s *server) handleStrReplacePage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
 	var a struct {
-		Path   string `json:"path"`
-		OldStr string `json:"old_str"`
-		NewStr string `json:"new_str"`
+		Path         string `json:"path"`
+		OldStr       string `json:"old_str"`
+		NewStr       string `json:"new_str"`
+		ExpectedHash string `json:"expected_hash"`
 	}
 	if err := json.Unmarshal(args, &a); err != nil {
 		return toolError(id, "invalid arguments")
@@ -834,6 +862,14 @@ func (s *server) handleStrReplacePage(id json.RawMessage, args json.RawMessage) 
 		return toolError(id, "reading page: "+err.Error())
 	}
 
+	// Optimistic concurrency check
+	if a.ExpectedHash != "" {
+		hash := sha256.Sum256(data)
+		if hex.EncodeToString(hash[:]) != a.ExpectedHash {
+			return toolError(id, "hash mismatch: page was modified since last read")
+		}
+	}
+
 	content := string(data)
 	count := strings.Count(content, a.OldStr)
 	if count == 0 {
@@ -851,7 +887,10 @@ func (s *server) handleStrReplacePage(id json.RawMessage, args json.RawMessage) 
 	if err := os.WriteFile(fullPath, []byte(newContent), 0o644); err != nil {
 		return toolError(id, "writing page: "+err.Error())
 	}
-	return toolSuccess(id, "replaced in: "+a.Path)
+
+	// Build a diff snippet showing ±3 lines around the replacement
+	snippet := diffSnippet(content, newContent, a.OldStr, a.NewStr)
+	return toolSuccess(id, "replaced in: "+a.Path+"\n\n"+snippet)
 }
 
 func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
@@ -873,7 +912,16 @@ func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrp
 		root = filepath.Join(root, filepath.FromSlash(a.Path))
 	}
 
-	var buf strings.Builder
+	const maxPages = 100
+
+	// First pass: collect pages
+	type pageEntry struct {
+		relPath string
+		data    []byte
+	}
+	var pages []pageEntry
+	totalBytes := 0
+
 	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".txt") {
 			return nil
@@ -882,22 +930,43 @@ func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrp
 		if readErr != nil {
 			return nil
 		}
-		relPath, _ := filepath.Rel(s.pagesRoot(), path)
+		relPath, _ := filepath.Rel(root, path)
 		relPath = filepath.ToSlash(relPath)
-		if buf.Len() > 0 {
-			buf.WriteString("\n")
-		}
-		buf.WriteString(fmt.Sprintf("=== %s ===\n", relPath))
-		buf.WriteString(string(data))
-		if len(data) > 0 && data[len(data)-1] != '\n' {
-			buf.WriteString("\n")
-		}
+		pages = append(pages, pageEntry{relPath: relPath, data: data})
+		totalBytes += len(data)
 		return nil
 	})
 
-	if buf.Len() == 0 {
+	if len(pages) == 0 {
 		return toolSuccess(id, "(empty)")
 	}
+
+	var buf strings.Builder
+	// Summary header
+	buf.WriteString(fmt.Sprintf("(%d pages, %d bytes)\n\n", len(pages), totalBytes))
+
+	truncated := len(pages) > maxPages
+	limit := len(pages)
+	if truncated {
+		limit = maxPages
+	}
+
+	for i := 0; i < limit; i++ {
+		p := pages[i]
+		if i > 0 {
+			buf.WriteString("\n")
+		}
+		buf.WriteString(fmt.Sprintf("=== %s ===\n", p.relPath))
+		buf.WriteString(string(p.data))
+		if len(p.data) > 0 && p.data[len(p.data)-1] != '\n' {
+			buf.WriteString("\n")
+		}
+	}
+
+	if truncated {
+		buf.WriteString(fmt.Sprintf("\n(truncated: showing %d of %d pages)\n", maxPages, len(pages)))
+	}
+
 	return toolSuccess(id, buf.String())
 }
 
@@ -940,7 +1009,13 @@ func (s *server) handleRelatedPages(id json.RawMessage, args json.RawMessage) js
 	content := string(data)
 	var outgoing []string
 	for _, p := range allPages {
-		if p != clean && strings.Contains(content, p) {
+		if p == clean {
+			continue
+		}
+		// Check full path match, suffix match, and filename-only match
+		if strings.Contains(content, p) {
+			outgoing = append(outgoing, p)
+		} else if pageRefersTo(content, p) {
 			outgoing = append(outgoing, p)
 		}
 	}
@@ -955,7 +1030,10 @@ func (s *server) handleRelatedPages(id json.RawMessage, args json.RawMessage) js
 		if readErr != nil {
 			continue
 		}
-		if strings.Contains(string(otherData), clean) {
+		otherContent := string(otherData)
+		if strings.Contains(otherContent, clean) {
+			incoming = append(incoming, p)
+		} else if pageRefersTo(otherContent, clean) {
 			incoming = append(incoming, p)
 		}
 	}
@@ -985,7 +1063,9 @@ func (s *server) handleRelatedPages(id json.RawMessage, args json.RawMessage) js
 
 func (s *server) handlePageHistory(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
 	var a struct {
-		Path string `json:"path"`
+		Path        string `json:"path"`
+		IncludeDiff bool   `json:"include_diff"`
+		Limit       int    `json:"limit"`
 	}
 	if err := json.Unmarshal(args, &a); err != nil {
 		return toolError(id, "invalid arguments")
@@ -998,8 +1078,21 @@ func (s *server) handlePageHistory(id json.RawMessage, args json.RawMessage) jso
 		return toolError(id, err.Error())
 	}
 
+	if a.Limit <= 0 {
+		a.Limit = 20
+	}
+
 	relPath := filepath.Join(pagesDir, filepath.FromSlash(clean))
-	out, err := execGit("-C", s.root, "log", "--follow", "--pretty=format:%H %ai %s", "--", relPath)
+
+	gitArgs := []string{"-C", s.root, "log", "--follow", fmt.Sprintf("-n%d", a.Limit)}
+	if a.IncludeDiff {
+		gitArgs = append(gitArgs, "-p", "--pretty=format:commit %H %ai %s", "--")
+	} else {
+		gitArgs = append(gitArgs, "--pretty=format:%H %ai %s", "--")
+	}
+	gitArgs = append(gitArgs, relPath)
+
+	out, err := execGit(gitArgs...)
 	if err != nil {
 		return toolError(id, "git log failed: "+strings.TrimSpace(out))
 	}
@@ -1013,6 +1106,52 @@ func execGit(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
+}
+
+// pageRefersTo checks if content mentions targetPath by suffix or filename.
+// For example, content mentioning "patterns/tokens.txt" matches target
+// "project/patterns/tokens.txt", and "tokens.txt" matches "deep/folder/tokens.txt".
+func pageRefersTo(content, targetPath string) bool {
+	// Try all suffixes: "a/b/c.txt", "b/c.txt", "c.txt"
+	parts := strings.Split(targetPath, "/")
+	for i := 1; i < len(parts); i++ {
+		suffix := strings.Join(parts[i:], "/")
+		if strings.Contains(content, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+// diffSnippet builds a ±3 line context window around a replacement.
+func diffSnippet(oldContent, newContent, oldStr, newStr string) string {
+	newLines := strings.Split(newContent, "\n")
+
+	// Find which line the replacement starts on in the new content
+	replacementIdx := strings.Index(newContent, newStr)
+	if replacementIdx < 0 {
+		// newStr is empty (deletion) — find by position difference
+		return strings.Join(newLines, "\n")
+	}
+
+	lineNum := strings.Count(newContent[:replacementIdx], "\n")
+	start := lineNum - 3
+	if start < 0 {
+		start = 0
+	}
+	end := lineNum + strings.Count(newStr, "\n") + 4
+	if end > len(newLines) {
+		end = len(newLines)
+	}
+
+	var buf strings.Builder
+	for i := start; i < end; i++ {
+		buf.WriteString(newLines[i])
+		if i < end-1 {
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
 }
 
 // --- Helpers ---

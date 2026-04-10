@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1227,6 +1228,13 @@ func TestStrReplacePage_ExactMatch_ReplacesContent(t *testing.T) {
 	if !strings.Contains(text, "replaced") {
 		t.Errorf("expected 'replaced' in response, got: %s", text)
 	}
+	// Should include a diff snippet showing old → new with context
+	if !strings.Contains(text, "max_retries: 5") {
+		t.Errorf("response should show new text in diff snippet, got: %s", text)
+	}
+	if !strings.Contains(text, "timeout: 30s") {
+		t.Errorf("response should show surrounding context lines, got: %s", text)
+	}
 
 	data, _ := os.ReadFile(filepath.Join(s.pagesRoot(), "config.txt"))
 	if string(data) != "max_retries: 5\ntimeout: 30s\n" {
@@ -1319,6 +1327,101 @@ func TestStrReplacePage_ResultExceedsMaxSize_ReturnsError(t *testing.T) {
 	}
 }
 
+func TestStrReplacePage_CorrectHash_AllowsReplace(t *testing.T) {
+	// Business context: str_replace should support the same optimistic
+	// concurrency as put_page for consistency.
+	// Scenario: Replace with correct expected_hash.
+	// Expected: Replacement succeeds.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "guarded.txt", "content": "old value here",
+	})
+	resp := callTool(s, "get_page", map[string]string{"path": "guarded.txt"})
+	result := resp.Result.(map[string]any)
+	meta := result["_meta"].(map[string]any)
+	hash := meta["hash"].(string)
+
+	resp = callTool(s, "str_replace_page", map[string]any{
+		"path":          "guarded.txt",
+		"old_str":       "old value",
+		"new_str":       "new value",
+		"expected_hash": hash,
+	})
+	if isToolError(resp) {
+		t.Fatalf("str_replace with correct hash should succeed: %s", getTextContent(t, resp))
+	}
+}
+
+func TestStrReplacePage_WrongHash_RejectsReplace(t *testing.T) {
+	// Business context: Stale hash should reject str_replace just like put_page.
+	// Scenario: Replace with wrong expected_hash.
+	// Expected: Error about hash mismatch.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "guarded.txt", "content": "original content",
+	})
+
+	resp := callTool(s, "str_replace_page", map[string]any{
+		"path":          "guarded.txt",
+		"old_str":       "original",
+		"new_str":       "modified",
+		"expected_hash": "stale_hash",
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error for wrong hash on str_replace")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "hash mismatch") {
+		t.Errorf("expected 'hash mismatch' error, got: %s", text)
+	}
+}
+
+func TestAppendPage_CorrectHash_AllowsAppend(t *testing.T) {
+	// Business context: append_page should also support optimistic concurrency.
+	// Scenario: Append with correct expected_hash.
+	// Expected: Append succeeds.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "log.txt", "content": "line 1\n",
+	})
+	resp := callTool(s, "get_page", map[string]string{"path": "log.txt"})
+	result := resp.Result.(map[string]any)
+	meta := result["_meta"].(map[string]any)
+	hash := meta["hash"].(string)
+
+	resp = callTool(s, "append_page", map[string]any{
+		"path":          "log.txt",
+		"content":       "line 2\n",
+		"expected_hash": hash,
+	})
+	if isToolError(resp) {
+		t.Fatalf("append with correct hash should succeed: %s", getTextContent(t, resp))
+	}
+}
+
+func TestAppendPage_WrongHash_RejectsAppend(t *testing.T) {
+	// Business context: Stale hash should reject append_page too.
+	// Scenario: Append with wrong expected_hash.
+	// Expected: Error about hash mismatch.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "log.txt", "content": "line 1\n",
+	})
+
+	resp := callTool(s, "append_page", map[string]any{
+		"path":          "log.txt",
+		"content":       "line 2\n",
+		"expected_hash": "wrong_hash",
+	})
+	if !isToolError(resp) {
+		t.Fatal("expected error for wrong hash on append")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "hash mismatch") {
+		t.Errorf("expected 'hash mismatch' error, got: %s", text)
+	}
+}
+
 // --- snapshot tests ---
 
 func TestSnapshot_AllPages_ConcatenatesContent(t *testing.T) {
@@ -1391,6 +1494,55 @@ func TestSnapshot_Empty_ReturnsMessage(t *testing.T) {
 	}
 }
 
+func TestSnapshot_IncludesSizeHeader(t *testing.T) {
+	// Business context: Agents need to know snapshot size before consuming it
+	// to avoid blowing their context window.
+	// Scenario: Snapshot a tree with known pages.
+	// Expected: Response starts with a summary line showing page count and byte count.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "a.txt", "content": "hello",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "b.txt", "content": "world",
+	})
+
+	resp := callTool(s, "snapshot", map[string]string{})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "2 pages") {
+		t.Errorf("expected '2 pages' in summary header, got first line: %s", strings.SplitN(text, "\n", 2)[0])
+	}
+	if !strings.Contains(text, "bytes") {
+		t.Errorf("expected 'bytes' in summary header, got first line: %s", strings.SplitN(text, "\n", 2)[0])
+	}
+}
+
+func TestSnapshot_MaxPages_TruncatesWithWarning(t *testing.T) {
+	// Business context: A project with hundreds of pages shouldn't produce a
+	// massive response. Default cap prevents context window overflow.
+	// Scenario: Create more pages than the limit, snapshot all.
+	// Expected: Output is truncated with a warning about remaining pages.
+	s := setupTestServer(t)
+	// Create 102 pages — beyond the default limit of 100
+	for i := 0; i < 102; i++ {
+		callTool(s, "put_page", map[string]string{
+			"path":    fmt.Sprintf("page-%03d.txt", i),
+			"content": fmt.Sprintf("content %d", i),
+		})
+	}
+
+	resp := callTool(s, "snapshot", map[string]string{})
+	text := getTextContent(t, resp)
+	// Should mention truncation
+	if !strings.Contains(text, "truncated") {
+		t.Errorf("expected 'truncated' warning, got last line: %s", lastLine(text))
+	}
+	// Should still include the page count total
+	if !strings.Contains(text, "102") {
+		t.Errorf("expected total count (102) mentioned, got: %s", strings.SplitN(text, "\n", 2)[0])
+	}
+}
+
 // --- related_pages tests ---
 
 func TestRelatedPages_FindsOutgoingLinks(t *testing.T) {
@@ -1415,6 +1567,72 @@ func TestRelatedPages_FindsOutgoingLinks(t *testing.T) {
 	text := getTextContent(t, resp)
 	if !strings.Contains(text, "patterns/tokens.txt") {
 		t.Errorf("should find outgoing reference to patterns/tokens.txt, got: %s", text)
+	}
+}
+
+func TestRelatedPages_PartialPath_MatchesSuffix(t *testing.T) {
+	// Business context: Authors write relative paths like "tokens.txt" or
+	// "patterns/tokens.txt", not the full "project/patterns/tokens.txt".
+	// related_pages must match these partial references to be useful.
+	// Scenario: Page at project/decisions/auth.txt mentions "patterns/tokens.txt"
+	//   but the actual stored path is "project/patterns/tokens.txt".
+	// Expected: Still detects the outgoing reference.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "project/decisions/auth.txt",
+		"content": "See patterns/tokens.txt for JWT approach.",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path":    "project/patterns/tokens.txt",
+		"content": "# Tokens",
+	})
+
+	resp := callTool(s, "related_pages", map[string]string{"path": "project/decisions/auth.txt"})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "project/patterns/tokens.txt") {
+		t.Errorf("should match partial path suffix 'patterns/tokens.txt' → 'project/patterns/tokens.txt', got: %s", text)
+	}
+}
+
+func TestRelatedPages_PartialPath_IncomingAlsoMatchesSuffix(t *testing.T) {
+	// Business context: Incoming references should also use suffix matching.
+	// Scenario: Page A mentions partial path of B. Query B for incoming refs.
+	// Expected: A is listed.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "project/decisions/auth.txt",
+		"content": "See patterns/tokens.txt for JWT approach.",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path":    "project/patterns/tokens.txt",
+		"content": "# Tokens",
+	})
+
+	resp := callTool(s, "related_pages", map[string]string{"path": "project/patterns/tokens.txt"})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "project/decisions/auth.txt") {
+		t.Errorf("incoming ref should detect partial path mention, got: %s", text)
+	}
+}
+
+func TestRelatedPages_FilenameOnly_MatchesByName(t *testing.T) {
+	// Business context: Authors sometimes write just the filename like "tokens.txt".
+	// Scenario: Page mentions just "tokens.txt" and a page with that name exists.
+	// Expected: Detected as outgoing reference.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path":    "notes.txt",
+		"content": "Remember to update tokens.txt with the new key format.",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path":    "deep/folder/tokens.txt",
+		"content": "# Token format",
+	})
+
+	resp := callTool(s, "related_pages", map[string]string{"path": "notes.txt"})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "deep/folder/tokens.txt") {
+		t.Errorf("should match filename-only reference 'tokens.txt', got: %s", text)
 	}
 }
 
@@ -1525,6 +1743,77 @@ func TestPageHistory_NoGitRepo_ReturnsError(t *testing.T) {
 	}
 }
 
+func TestPageHistory_IncludeDiff_ShowsPatches(t *testing.T) {
+	// Business context: Seeing what changed (not just that it changed) is the
+	// most valuable part of history. include_diff adds the patch.
+	// Scenario: Two commits, request history with include_diff=true.
+	// Expected: Response includes the actual diff content.
+	s := setupTestServer(t)
+	runGit(t, s.root, "init")
+	runGit(t, s.root, "config", "user.email", "test@test.com")
+	runGit(t, s.root, "config", "user.name", "Test")
+
+	callTool(s, "put_page", map[string]string{
+		"path": "evolving.txt", "content": "line one\nline two\n",
+	})
+	runGit(t, s.root, "add", filepath.Join(pagesDir, "evolving.txt"))
+	runGit(t, s.root, "commit", "-m", "initial")
+
+	callTool(s, "put_page", map[string]string{
+		"path": "evolving.txt", "content": "line one\nline two updated\n",
+	})
+	runGit(t, s.root, "add", filepath.Join(pagesDir, "evolving.txt"))
+	runGit(t, s.root, "commit", "-m", "update line two")
+
+	resp := callTool(s, "page_history", map[string]any{
+		"path":         "evolving.txt",
+		"include_diff": true,
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	// Should contain diff markers
+	if !strings.Contains(text, "-line two") {
+		t.Errorf("expected diff showing removed line, got: %s", text)
+	}
+	if !strings.Contains(text, "+line two updated") {
+		t.Errorf("expected diff showing added line, got: %s", text)
+	}
+}
+
+func TestPageHistory_Limit_OnlyReturnsNCommits(t *testing.T) {
+	// Business context: Pages with many commits shouldn't dump all history.
+	// limit=1 should return only the most recent commit.
+	// Scenario: 3 commits, request history with limit=1.
+	// Expected: Only the latest commit appears.
+	s := setupTestServer(t)
+	runGit(t, s.root, "init")
+	runGit(t, s.root, "config", "user.email", "test@test.com")
+	runGit(t, s.root, "config", "user.name", "Test")
+
+	for i := 1; i <= 3; i++ {
+		callTool(s, "put_page", map[string]string{
+			"path":    "versioned.txt",
+			"content": fmt.Sprintf("version %d", i),
+		})
+		runGit(t, s.root, "add", filepath.Join(pagesDir, "versioned.txt"))
+		runGit(t, s.root, "commit", "-m", fmt.Sprintf("commit %d", i))
+	}
+
+	resp := callTool(s, "page_history", map[string]any{
+		"path":  "versioned.txt",
+		"limit": 1,
+	})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "commit 3") {
+		t.Errorf("expected most recent commit 'commit 3', got: %s", text)
+	}
+	if strings.Contains(text, "commit 1") {
+		t.Errorf("should NOT contain oldest commit when limit=1, got: %s", text)
+	}
+}
+
 func TestPageHistory_PageNotFound_ReturnsError(t *testing.T) {
 	// Business context: History for a page with no commits should fail clearly.
 	// Scenario: Page exists on disk but has never been committed (repo has a commit but file isn't tracked).
@@ -1555,9 +1844,9 @@ func TestPageHistory_PageNotFound_ReturnsError(t *testing.T) {
 
 func TestGetPage_ReturnsHash(t *testing.T) {
 	// Business context: For optimistic concurrency, get_page must return a hash
-	// of the content alongside the text, so agents can detect stale reads.
+	// of the content as structured metadata, not mixed into content.
 	// Scenario: Create and read a page.
-	// Expected: Response includes a hash field.
+	// Expected: Response includes a _meta.hash field separate from content.
 	s := setupTestServer(t)
 	callTool(s, "put_page", map[string]string{
 		"path": "versioned.txt", "content": "initial content",
@@ -1568,18 +1857,29 @@ func TestGetPage_ReturnsHash(t *testing.T) {
 		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
 	}
 	result := resp.Result.(map[string]any)
+
+	// Content should have exactly 1 item (the text), no hash pollution
 	content := result["content"].([]map[string]any)
-	if len(content) < 2 {
-		t.Fatal("expected at least 2 content items (text + hash)")
+	if len(content) != 1 {
+		t.Errorf("expected exactly 1 content item, got %d", len(content))
 	}
-	// Second content item should be the hash
-	hashItem := content[1]
-	if hashItem["type"] != "text" {
-		t.Errorf("hash item type = %v, want text", hashItem["type"])
+	// The text content should not contain "hash:"
+	text, _ := content[0]["text"].(string)
+	if strings.Contains(text, "hash:") {
+		t.Error("content text should not contain hash")
 	}
-	hashText, _ := hashItem["text"].(string)
-	if !strings.HasPrefix(hashText, "hash:") {
-		t.Errorf("hash item should start with 'hash:', got: %s", hashText)
+
+	// Hash should be in _meta
+	meta, ok := result["_meta"].(map[string]any)
+	if !ok {
+		t.Fatal("expected _meta field in result")
+	}
+	hash, ok := meta["hash"].(string)
+	if !ok || hash == "" {
+		t.Fatal("expected non-empty hash in _meta")
+	}
+	if len(hash) != 64 {
+		t.Errorf("hash should be 64 hex chars, got %d: %s", len(hash), hash)
 	}
 }
 
@@ -1593,12 +1893,11 @@ func TestPutPage_CorrectHash_AllowsUpdate(t *testing.T) {
 		"path": "guarded.txt", "content": "original",
 	})
 
-	// Get the hash
+	// Get the hash from _meta
 	resp := callTool(s, "get_page", map[string]string{"path": "guarded.txt"})
 	result := resp.Result.(map[string]any)
-	content := result["content"].([]map[string]any)
-	hashText, _ := content[1]["text"].(string)
-	hash := strings.TrimPrefix(hashText, "hash:")
+	meta := result["_meta"].(map[string]any)
+	hash := meta["hash"].(string)
 
 	// Update with correct hash
 	resp = callTool(s, "put_page", map[string]any{
@@ -1663,4 +1962,9 @@ func runGit(t *testing.T, dir string, args ...string) {
 	if err != nil {
 		t.Fatalf("git %v failed: %v\n%s", args, err, out)
 	}
+}
+
+func lastLine(s string) string {
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	return lines[len(lines)-1]
 }
