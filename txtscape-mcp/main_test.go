@@ -88,6 +88,20 @@ func isToolError(resp jsonrpcResponse) bool {
 	return isErr
 }
 
+// getMetaHash extracts the _meta.hash string from a tool response, or "" if absent.
+func getMetaHash(resp jsonrpcResponse) string {
+	result, ok := resp.Result.(map[string]any)
+	if !ok {
+		return ""
+	}
+	meta, ok := result["_meta"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	h, _ := meta["hash"].(string)
+	return h
+}
+
 // --- Initialize tests ---
 
 func TestInitialize_ServerInfo_ReturnsCapabilities(t *testing.T) {
@@ -1543,6 +1557,63 @@ func TestSnapshot_MaxPages_TruncatesWithWarning(t *testing.T) {
 	}
 }
 
+func TestSnapshot_Offset_SkipsPages(t *testing.T) {
+	// Business context: When snapshot is truncated at 100 pages, the agent needs
+	// a way to fetch the remaining pages. Offset lets you paginate.
+	// Scenario: Create 5 pages, request snapshot with offset=3.
+	// Expected: Only the last 2 pages are returned.
+	s := setupTestServer(t)
+	for i := 0; i < 5; i++ {
+		callTool(s, "put_page", map[string]string{
+			"path":    fmt.Sprintf("p%d.txt", i),
+			"content": fmt.Sprintf("content %d", i),
+		})
+	}
+
+	resp := callTool(s, "snapshot", map[string]any{"offset": 3})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	// Header should show 5 total pages
+	if !strings.Contains(text, "5 pages") {
+		t.Errorf("header should show total of 5 pages, got: %s", strings.SplitN(text, "\n", 2)[0])
+	}
+	// Only 2 pages in the body (p3.txt and p4.txt)
+	count := strings.Count(text, "===")
+	if count != 4 { // 2 pages × 2 (=== name === on each)
+		t.Errorf("expected 2 page headers (4 ===), got %d ===", count)
+	}
+	if !strings.Contains(text, "p3.txt") {
+		t.Errorf("expected p3.txt in offset output, got:\n%s", text)
+	}
+	if !strings.Contains(text, "p4.txt") {
+		t.Errorf("expected p4.txt in offset output, got:\n%s", text)
+	}
+	if strings.Contains(text, "p2.txt") {
+		t.Errorf("p2.txt should be skipped by offset=3, got:\n%s", text)
+	}
+}
+
+func TestSnapshot_Offset_BeyondTotal_ReturnsEmpty(t *testing.T) {
+	// Business context: Offset past the end should report empty gracefully.
+	// Scenario: 3 pages, offset=10.
+	// Expected: Returns the typical empty indicator.
+	s := setupTestServer(t)
+	for i := 0; i < 3; i++ {
+		callTool(s, "put_page", map[string]string{
+			"path":    fmt.Sprintf("x%d.txt", i),
+			"content": "data",
+		})
+	}
+
+	resp := callTool(s, "snapshot", map[string]any{"offset": 10})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "(empty") {
+		t.Errorf("expected empty result for offset past end, got:\n%s", text)
+	}
+}
+
 // --- related_pages tests ---
 
 func TestRelatedPages_FindsOutgoingLinks(t *testing.T) {
@@ -1950,6 +2021,121 @@ func TestPutPage_NoHash_StillWorks(t *testing.T) {
 	})
 	if isToolError(resp) {
 		t.Fatalf("update without hash should succeed: %s", getTextContent(t, resp))
+	}
+}
+
+func TestDiffSnippet_ShowsMinusAndPlusMarkers(t *testing.T) {
+	// Business context: After str_replace, the agent needs to verify what changed.
+	// A context window without markers is ambiguous — you can't tell old from new.
+	// Scenario: Replace a line in the middle of a 15-line file.
+	// Expected: Snippet contains - (old line) and + (new line) markers with context.
+	var lines []string
+	for i := 1; i <= 15; i++ {
+		lines = append(lines, fmt.Sprintf("line %d", i))
+	}
+	old := strings.Join(lines, "\n")
+	neu := strings.Replace(old, "line 8", "LINE EIGHT", 1)
+
+	snippet := diffSnippet(old, neu, "line 8", "LINE EIGHT")
+	if !strings.Contains(snippet, "-line 8") {
+		t.Errorf("expected '-line 8' marker for removed line, got:\n%s", snippet)
+	}
+	if !strings.Contains(snippet, "+LINE EIGHT") {
+		t.Errorf("expected '+LINE EIGHT' marker for added line, got:\n%s", snippet)
+	}
+	// Context lines should have a space prefix
+	if !strings.Contains(snippet, " line 7") {
+		t.Errorf("expected ' line 7' as context line, got:\n%s", snippet)
+	}
+	if !strings.Contains(snippet, " line 9") {
+		t.Errorf("expected ' line 9' as context line, got:\n%s", snippet)
+	}
+}
+
+func TestDiffSnippet_DeletionShowsOnlyMinus(t *testing.T) {
+	// Business context: Deleting text (replacing with empty) should still produce
+	// a meaningful diff showing what was removed.
+	// Scenario: Replace a line with empty string.
+	// Expected: Shows - marker for removed line, no + marker.
+	old := "alpha\nbeta\ngamma"
+	neu := strings.Replace(old, "beta\n", "", 1)
+
+	snippet := diffSnippet(old, neu, "beta\n", "")
+	if !strings.Contains(snippet, "-beta") {
+		t.Errorf("expected '-beta' marker for deletion, got:\n%s", snippet)
+	}
+}
+
+func TestPutPage_ReturnsNewHash_AfterCreate(t *testing.T) {
+	// Business context: After creating a page, the agent needs the hash to make
+	// subsequent edits with optimistic concurrency without a separate get_page call.
+	// Scenario: Create a new page via put_page.
+	// Expected: Response includes _meta.hash matching the content just written.
+	s := setupTestServer(t)
+	resp := callTool(s, "put_page", map[string]string{
+		"path": "new.txt", "content": "fresh content",
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	hash := getMetaHash(resp)
+	if hash == "" {
+		t.Fatal("expected _meta.hash in put_page response, got none")
+	}
+	// Verify hash matches what get_page returns
+	getResp := callTool(s, "get_page", map[string]string{"path": "new.txt"})
+	if got := getMetaHash(getResp); got != hash {
+		t.Errorf("put_page hash %q != get_page hash %q", hash, got)
+	}
+}
+
+func TestAppendPage_ReturnsNewHash_AfterAppend(t *testing.T) {
+	// Business context: After appending, the agent needs the updated hash to
+	// chain further edits without re-reading.
+	// Scenario: Append to an existing page.
+	// Expected: Response includes _meta.hash for the new content.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "log.txt", "content": "entry 1\n",
+	})
+	resp := callTool(s, "append_page", map[string]string{
+		"path": "log.txt", "content": "entry 2\n",
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	hash := getMetaHash(resp)
+	if hash == "" {
+		t.Fatal("expected _meta.hash in append_page response, got none")
+	}
+	getResp := callTool(s, "get_page", map[string]string{"path": "log.txt"})
+	if got := getMetaHash(getResp); got != hash {
+		t.Errorf("append_page hash %q != get_page hash %q", hash, got)
+	}
+}
+
+func TestStrReplacePage_ReturnsNewHash_AfterReplace(t *testing.T) {
+	// Business context: After str_replace, the agent should get the new hash
+	// so it can do another edit immediately without a get_page round-trip.
+	// Scenario: Replace text in a page.
+	// Expected: Response includes _meta.hash for the post-replacement content.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "config.txt", "content": "retries: 3\ntimeout: 30s\n",
+	})
+	resp := callTool(s, "str_replace_page", map[string]string{
+		"path": "config.txt", "old_str": "retries: 3", "new_str": "retries: 5",
+	})
+	if isToolError(resp) {
+		t.Fatalf("unexpected error: %s", getTextContent(t, resp))
+	}
+	hash := getMetaHash(resp)
+	if hash == "" {
+		t.Fatal("expected _meta.hash in str_replace_page response, got none")
+	}
+	getResp := callTool(s, "get_page", map[string]string{"path": "config.txt"})
+	if got := getMetaHash(getResp); got != hash {
+		t.Errorf("str_replace hash %q != get_page hash %q", hash, got)
 	}
 }
 

@@ -335,13 +335,17 @@ func toolDefinitions() []map[string]any {
 		},
 		{
 			"name":        "snapshot",
-			"description": "Read all pages in a subtree and return them concatenated with path headers. Useful for loading all project memory in one call. Pass empty path for the full tree, or a folder path for a subtree.",
+			"description": "Read all pages in a subtree and return them concatenated with path headers. Useful for loading all project memory in one call. Pass empty path for the full tree, or a folder path for a subtree. Returns up to 100 pages per call — use offset to paginate.",
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"path": map[string]any{
 						"type":        "string",
 						"description": "Folder path to snapshot, or empty for root. Example: decisions",
+					},
+					"offset": map[string]any{
+						"type":        "integer",
+						"description": "Number of pages to skip (for pagination). Default 0.",
 					},
 				},
 			},
@@ -516,9 +520,9 @@ func (s *server) handlePutPage(id json.RawMessage, args json.RawMessage) jsonrpc
 		return toolError(id, "writing page: "+err.Error())
 	}
 	if isUpdate {
-		return toolSuccess(id, "page updated: "+a.Path)
+		return toolSuccessWithHash(id, "page updated: "+a.Path, []byte(a.Content))
 	}
-	return toolSuccess(id, "page created: "+a.Path)
+	return toolSuccessWithHash(id, "page created: "+a.Path, []byte(a.Content))
 }
 
 func (s *server) handleAppendPage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
@@ -571,9 +575,9 @@ func (s *server) handleAppendPage(id json.RawMessage, args json.RawMessage) json
 		return toolError(id, "writing page: "+err.Error())
 	}
 	if isNew {
-		return toolSuccess(id, "page created: "+a.Path)
+		return toolSuccessWithHash(id, "page created: "+a.Path, newContent)
 	}
-	return toolSuccess(id, "page appended: "+a.Path)
+	return toolSuccessWithHash(id, "page appended: "+a.Path, newContent)
 }
 
 func (s *server) handleDeletePage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
@@ -890,12 +894,13 @@ func (s *server) handleStrReplacePage(id json.RawMessage, args json.RawMessage) 
 
 	// Build a diff snippet showing ±3 lines around the replacement
 	snippet := diffSnippet(content, newContent, a.OldStr, a.NewStr)
-	return toolSuccess(id, "replaced in: "+a.Path+"\n\n"+snippet)
+	return toolSuccessWithHash(id, "replaced in: "+a.Path+"\n\n"+snippet, []byte(newContent))
 }
 
 func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
 	var a struct {
-		Path string `json:"path"`
+		Path   string `json:"path"`
+		Offset int    `json:"offset"`
 	}
 	if args != nil {
 		json.Unmarshal(args, &a)
@@ -941,19 +946,28 @@ func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrp
 		return toolSuccess(id, "(empty)")
 	}
 
+	// Apply offset
+	start := a.Offset
+	if start < 0 {
+		start = 0
+	}
+	if start >= len(pages) {
+		return toolSuccess(id, fmt.Sprintf("(empty — offset %d past %d pages)", start, len(pages)))
+	}
+
 	var buf strings.Builder
 	// Summary header
 	buf.WriteString(fmt.Sprintf("(%d pages, %d bytes)\n\n", len(pages), totalBytes))
 
-	truncated := len(pages) > maxPages
-	limit := len(pages)
-	if truncated {
-		limit = maxPages
+	end := start + maxPages
+	truncated := end < len(pages)
+	if end > len(pages) {
+		end = len(pages)
 	}
 
-	for i := 0; i < limit; i++ {
+	for i := start; i < end; i++ {
 		p := pages[i]
-		if i > 0 {
+		if i > start {
 			buf.WriteString("\n")
 		}
 		buf.WriteString(fmt.Sprintf("=== %s ===\n", p.relPath))
@@ -964,7 +978,7 @@ func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrp
 	}
 
 	if truncated {
-		buf.WriteString(fmt.Sprintf("\n(truncated: showing %d of %d pages)\n", maxPages, len(pages)))
+		buf.WriteString(fmt.Sprintf("\n(truncated: showing %d–%d of %d pages)\n", start+1, end, len(pages)))
 	}
 
 	return toolSuccess(id, buf.String())
@@ -1123,35 +1137,74 @@ func pageRefersTo(content, targetPath string) bool {
 	return false
 }
 
-// diffSnippet builds a ±3 line context window around a replacement.
+// diffSnippet builds a unified-diff style snippet around a replacement
+// with - (removed), + (added), and space (context) line prefixes.
 func diffSnippet(oldContent, newContent, oldStr, newStr string) string {
+	oldLines := strings.Split(oldContent, "\n")
 	newLines := strings.Split(newContent, "\n")
 
-	// Find which line the replacement starts on in the new content
-	replacementIdx := strings.Index(newContent, newStr)
-	if replacementIdx < 0 {
-		// newStr is empty (deletion) — find by position difference
-		return strings.Join(newLines, "\n")
+	// Find where the old string starts in the old content
+	oldIdx := strings.Index(oldContent, oldStr)
+	if oldIdx < 0 {
+		oldIdx = 0
+	}
+	oldStartLine := strings.Count(oldContent[:oldIdx], "\n")
+	oldStrLines := strings.Split(oldStr, "\n")
+	oldEndLine := oldStartLine + len(oldStrLines) // exclusive
+
+	// Find where the new string starts in the new content
+	var newStartLine, newEndLine int
+	if newStr == "" {
+		newStartLine = oldStartLine
+		newEndLine = oldStartLine
+	} else {
+		newIdx := strings.Index(newContent, newStr)
+		if newIdx < 0 {
+			newStartLine = oldStartLine
+			newEndLine = oldStartLine
+		} else {
+			newStartLine = strings.Count(newContent[:newIdx], "\n")
+			newStrLines := strings.Split(newStr, "\n")
+			newEndLine = newStartLine + len(newStrLines)
+		}
 	}
 
-	lineNum := strings.Count(newContent[:replacementIdx], "\n")
-	start := lineNum - 3
+	// Context window: 3 lines before and after
+	contextBefore := 3
+	contextAfter := 3
+	start := oldStartLine - contextBefore
 	if start < 0 {
 		start = 0
 	}
-	end := lineNum + strings.Count(newStr, "\n") + 4
-	if end > len(newLines) {
-		end = len(newLines)
+	endOld := oldEndLine + contextAfter
+	if endOld > len(oldLines) {
+		endOld = len(oldLines)
+	}
+	endNew := newEndLine + contextAfter
+	if endNew > len(newLines) {
+		endNew = len(newLines)
 	}
 
 	var buf strings.Builder
-	for i := start; i < end; i++ {
-		buf.WriteString(newLines[i])
-		if i < end-1 {
-			buf.WriteString("\n")
-		}
+
+	// Before-context (same in both)
+	for i := start; i < oldStartLine; i++ {
+		buf.WriteString(" " + oldLines[i] + "\n")
 	}
-	return buf.String()
+	// Removed lines
+	for i := oldStartLine; i < oldEndLine; i++ {
+		buf.WriteString("-" + oldLines[i] + "\n")
+	}
+	// Added lines
+	for i := newStartLine; i < newEndLine; i++ {
+		buf.WriteString("+" + newLines[i] + "\n")
+	}
+	// After-context (from new content)
+	for i := newEndLine; i < endNew; i++ {
+		buf.WriteString(" " + newLines[i] + "\n")
+	}
+
+	return strings.TrimRight(buf.String(), "\n")
 }
 
 // --- Helpers ---
@@ -1180,6 +1233,22 @@ func toolSuccess(id json.RawMessage, text string) jsonrpcResponse {
 		Result: map[string]any{
 			"content": []map[string]any{
 				{"type": "text", "text": text},
+			},
+		},
+	}
+}
+
+func toolSuccessWithHash(id json.RawMessage, text string, content []byte) jsonrpcResponse {
+	hash := sha256.Sum256(content)
+	return jsonrpcResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Result: map[string]any{
+			"content": []map[string]any{
+				{"type": "text", "text": text},
+			},
+			"_meta": map[string]any{
+				"hash": hex.EncodeToString(hash[:]),
 			},
 		},
 	}
