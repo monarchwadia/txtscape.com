@@ -1,0 +1,41 @@
+# Initialization Skill (Built into MCP Server)
+
+Status: not started
+
+An onboarding experience built directly into the MCP server that welcomes new users, teaches them how txtscape works, and configures concerns interactively — all powered by the LLM.
+
+## How it works
+- Exposed as an MCP resource (not a tool) — the agent reads it on first connection
+- Resource contains a welcome message + getting-started instructions
+- The agent uses this to guide the user through:
+  1. "What kind of project is this?" (web app, CLI, library, etc.)
+  2. "What do you want to remember?" → suggests concerns based on project type
+  3. Writes config.json with chosen concerns
+  4. Creates a first page (e.g. decisions/first-decision.txt) as an example
+  5. Explains the folder structure and how to use txtscape going forward
+
+## Why a resource, not a tool
+- Resources are read automatically by the agent at connection time
+- The agent sees the welcome text in its context without the user doing anything
+- No user action required to trigger onboarding — it just happens
+- Tools are for actions; resources are for context. Onboarding is context.
+
+## Detection
+- If .txtscape/ doesn't exist → full onboarding
+- If .txtscape/config.json exists but pages/ is empty → light onboarding ("you're set up but haven't stored anything yet")
+- If pages already exist → skip onboarding, just load normally
+
+## Safety
+- Never overwrite existing config.json without asking
+- Show the user what will be created before creating it
+- Explain each concern in plain language, not jargon
+
+## MCP resource shape
+- URI: `txtscape://onboarding`
+- Content type: text/plain
+- Dynamic: content changes based on workspace state (no .txtscape, empty, populated)
+
+## Open questions
+- Should it also detect the project type from files in the workspace? (package.json → Node, go.mod → Go, etc.)
+- How much should the resource include vs leaving to the agent's judgment?
+- Should there be a `txtscape://status` resource too? (page count, last updated, concern summary)

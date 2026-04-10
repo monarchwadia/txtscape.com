@@ -1,0 +1,35 @@
+# Config and Data Validations
+
+Status: not started
+
+Tighten up validation across the MCP server — both for config.json and for page content/paths.
+
+## Config validations needed
+- config.json schema validation on load:
+  - concerns must be an array
+  - each concern must have folderName (required), label (required), description (required)
+  - template is optional
+  - folderName must match page path rules (lowercase alphanumeric, hyphens, underscores)
+  - no duplicate folderNames
+  - color field validation when GUI adds it (valid hex color)
+- Warn on unknown fields (forward compatibility) vs reject (strict mode)?
+- Surface validation errors clearly — which field, what's wrong, how to fix
+
+## Data validations to audit
+- Page content size limits (currently 1MB — is this enforced everywhere?)
+- Path validation consistency between put_page, move_page, delete_page, etc.
+- UTF-8 validation on page content
+- Newline normalization (CRLF → LF?)
+- Empty content handling (should put_page accept empty string?)
+- Hash validation format (expected_hash should look like a SHA-256 hex string)
+
+## Approach
+- Audit existing validation code in main.go (validatePath, individual handlers)
+- Write tests for each validation gap found
+- Fix via TDD — red/green for each case
+- Add config validation to loadConfig() with structured error reporting
+
+## Open questions
+- Strict vs lenient config parsing? Currently lenient (malformed → fallback to static instructions)
+- Should invalid config be an error or a warning?
+- Should the MCP server report config issues via a resource or log?

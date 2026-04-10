@@ -1,0 +1,28 @@
+# Easy Install for Local MCP Server
+
+Status: not started
+
+Make it dead simple for anyone to install txtscape-mcp. Every friction point loses adopters.
+
+## Goals
+- One command install from any platform (macOS, Linux, Windows)
+- No Go toolchain required — prebuilt binaries
+- Automatic IDE integration (VS Code settings.json, Cursor config)
+
+## Approaches to evaluate
+- `go install` — easy for Go devs, useless for everyone else
+- GoReleaser + GitHub Releases — prebuilt binaries for all platforms, `curl | sh` installer
+- npm wrapper package — `npx txtscape-mcp` just works, wraps the Go binary
+- Homebrew tap — `brew install txtscape/tap/txtscape-mcp`
+- All of the above — different users prefer different methods
+
+## Must haves
+- Works on first try, no debugging
+- Clear error messages if something goes wrong
+- Post-install verification: `txtscape-mcp --version` or similar
+- README with copy-pasteable snippets for each IDE
+
+## Open questions
+- Which install method to prioritize first?
+- Should the installer auto-configure the user's IDE?
+- How to handle updates?

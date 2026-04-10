@@ -1,0 +1,26 @@
+# Beginner-Friendly Experience
+
+Status: not started
+
+Make txtscape approachable for bootcamp grads and junior developers who may have never used an MCP server, a CLI tool, or Git-committed config files.
+
+## Problems beginners face
+- "What's an MCP server?" — they don't know and shouldn't need to
+- "Where do I put this config?" — file paths are confusing
+- "What's a concern?" — the concept needs introduction
+- "Is it working?" — no feedback loop, anxiety
+- Terminal-first workflows are intimidating
+
+## Ideas
+- The local GUI (see: local-gui todo) helps a LOT — visual, clickable, not terminal
+- The initialization skill (see: init-skill todo) walks them through setup interactively
+- Error messages should assume zero context — explain what went wrong AND what to do
+- README/docs with screenshots, not just code blocks
+- "Getting Started" guide that takes 5 minutes, not 30
+- Example config.json files for common use cases (web app, mobile app, solo project)
+
+## Overlap with other todos
+- easy-install: install must be one command
+- init-skill: first-run experience must be guided
+- local-gui: visual interface lowers the barrier
+- landing-page: first impression must not be intimidating

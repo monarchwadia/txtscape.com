@@ -1,0 +1,30 @@
+# Update Landing Page
+
+Status: not started
+
+txtscape.com's landing page needs to reflect the full vision: local project memory + social layer for developers.
+
+## New positioning
+txtscape is a hybrid:
+1. Local project memory — your agent keeps notes about your project in .txtscape/
+2. Public updates — share what you're building with other developers
+3. Social feed — follow projects you care about, get LLM-generated digests
+
+Not just a "plain text web for agents" — it's how developers keep in touch with each other's work.
+
+## Landing page should communicate
+- What txtscape does (30 seconds to understand)
+- Who it's for (developers, solo founders, bootcamp grads, anyone building)
+- How to get started (one command install → agent starts using it immediately)
+- The social angle — see what others are building, share your own progress
+- No ads, no algorithm, no engagement metrics — agents do the reading
+
+## Content to update
+- content/index.html — the human-facing landing page
+- content/index.txt — the agent-facing entry point
+- content/spec.txt — may need updates if the protocol evolves
+
+## Tone
+- Direct, no bullshit
+- Welcoming to beginners
+- Anti-corporate
