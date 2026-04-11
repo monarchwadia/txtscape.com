@@ -1,0 +1,72 @@
+# Usability Testing with Parallel Agent Personas
+
+How to test both the tool and the tutorial for real-world usability.
+
+## The Core Idea
+
+Launch multiple AI agents in parallel, each with a different persona, each following the same material end-to-end in isolation. Synthesize their independent reports to find patterns.
+
+This works because:
+- Different personas catch different failure modes
+- Parallel execution means it takes minutes, not hours
+- Each agent gets a fresh temp dir — no shared state, no cross-contamination
+- Non-deterministic responses surface edge cases a single run would miss
+
+## Setup
+
+1. Build the MCP binary to a known path (e.g. `/tmp/txtscape-mcp`)
+2. Each agent gets its own isolated temp dir via `mktemp -d`
+3. Agents interact with the MCP server via JSON-RPC over stdin/stdout, running the binary with cwd = their temp dir
+4. Tutorial pages are fetched live from the running web server
+
+## Personas (use at least 3)
+
+**Junior Developer** — follows instructions literally, reports when confused or stuck. Catches: missing prerequisites, assumed knowledge, jargon without definition.
+
+**Skeptical Mid-Level** — adversarial, tries to break things, follows instructions too literally on purpose. Catches: factual errors, misleading promises, edge cases, things that work by accident.
+
+**Learn-by-Doing Developer** — executes every step, verifies every claim, keeps a running log. Catches: gaps between described and actual output, friction in the happy path, moments where the concept "clicks."
+
+## What Each Agent Does
+
+1. Reads the tutorial/docs (fetched via curl or similar)
+2. Follows every step by making real MCP tool calls (not simulated)
+3. Verifies each step's promised outcome against actual MCP server response
+4. Keeps a structured log: what they did, what happened, whether it matched
+
+## What Each Agent Reports
+
+- Step-by-step results (worked / didn't work / worked differently)
+- Confusion points (ambiguous, unclear, required re-reading)
+- Broken promises (tutorial says X, actual output is Y — quote both)
+- Missing steps (where a real user would get stuck)
+- Nice surprises (better than expected)
+
+## How to Synthesize
+
+Categorize findings by severity:
+- **Critical** — breaks the experience, user cannot proceed
+- **High** — visible mismatch but recoverable
+- **Low** — polish, minor inconsistency
+- **Working well** — confirmed accurate, good design
+
+Cross-reference across agents: if 2+ agents hit the same issue, it's definitely real. If only one agent hits it, it might be persona-specific (still worth noting).
+
+## Applies To
+
+- **Tutorial testing**: agents follow the tutorial steps and verify claims match reality
+- **Tool testing**: agents exercise MCP tools directly and verify behavior matches docs
+- **Docs testing**: agents read reference docs and verify examples work
+
+## Lessons Learned
+
+- The MCP binary's root is its cwd, so each agent MUST cd to its temp dir before spawning the process
+- Agents need the exact JSON-RPC protocol spelled out (initialize first, then tool calls)
+- Give agents the real tool names — they'll discover mismatches between documented and actual names
+- Templates and config.json are filesystem files, not MCP calls — make this explicit in the prompt
+- Three agents is the sweet spot: fewer misses too much, more produces diminishing returns
+
+## Status
+
+Graduated to a reusable skill: `.github/skills/usability-test/SKILL.md`
+This page remains as methodology reference; the skill contains the executable steps.
