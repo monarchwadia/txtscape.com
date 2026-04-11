@@ -23,9 +23,9 @@ If txtscape has no pages yet, skip this step.
 Before writing anything, tell the user what you detected and decided (include any txtscape findings):
 
 ```
-Detected: auth.go is open → writing unit tests for auth
+Detected: main.go is open → writing unit tests for path validation
 Level: unit
-Target: internal/auth/auth_test.go
+Target: txtscape-mcp/main_test.go
 Approach: red/green TDD, starting with the simplest case
 ```
 
@@ -68,14 +68,14 @@ Summary:
 After writing, output:
 
 ```
-✓ Written: internal/auth/auth_test.go
-  - TestHashPassword_EmptyInput_PreventBlankPasswords_ReturnsError
-  - TestHashPassword_ValidInput_StoreCredentials_ReturnsHash
-✓ Written: internal/auth/auth.go
-  - HashPassword() — implemented to pass above tests
+✓ Written: txtscape-mcp/main_test.go
+  - TestValidatePath_EmptyInput_ReturnsError
+  - TestValidatePath_ValidInput_ReturnsCleanPath
+✓ Written: txtscape-mcp/main.go
+  - validatePath() — implemented to pass above tests
   
-Next: TestValidatePassword (not yet written)
-Untested: CreateUser, GetUser
+Next: TestValidatePath_TraversalAttempt (not yet written)
+Untested: handleGetPage, handlePutPage
 ```
 
 ## Step 6: Store what you learned
@@ -93,6 +93,5 @@ Do not store trivial implementation details.
 
 All modes share these — load via txtscape `get_page`:
 - `references/skills/shared/test-conventions.txt` — naming, comments, structure
-- `references/skills/shared/validation-rules.txt` — regexes, limits, status codes
-- `references/skills/shared/db-setup.txt` — TestMain, per-package DB, cleanup
-- `references/skills/shared/test-helpers.txt` — signUp, putPage, requireStatus
+- `references/skills/shared/test-helpers.txt` — setupTestServer, callTool, getTextContent
+- `references/skills/shared/methodology.txt` — walking skeleton, red/green TDD

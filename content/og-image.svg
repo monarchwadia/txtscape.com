@@ -18,17 +18,17 @@
   </g>
   
   <!-- Terminal prompt decoration -->
-  <text x="80" y="180" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="18" fill="#484f58">$ curl txtscape.com/~alice/hello.txt</text>
+  <text x="80" y="180" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="18" fill="#484f58">$ txtscape-mcp  │  .txtscape/pages/decisions/use-flat-files.txt</text>
   
   <!-- Title -->
   <text x="80" y="280" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="64" font-weight="700" fill="#e6edf3">txtscape</text>
   
   <!-- Tagline -->
-  <text x="80" y="360" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="24" fill="#7d8590">What if the web was just text files</text>
-  <text x="80" y="396" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="24" fill="#7d8590">that linked to each other?</text>
+  <text x="80" y="360" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="24" fill="#7d8590">Persistent project memory</text>
+  <text x="80" y="396" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="24" fill="#7d8590">for AI agents.</text>
   
   <!-- Decorative links -->
-  <text x="80" y="490" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="16" fill="#484f58">[hello.txt](/~alice/hello.txt)  [notes/](/~alice/notes/)  [ideas.txt](/~bob/ideas.txt)</text>
+  <text x="80" y="490" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="16" fill="#484f58">get_page · put_page · search_pages · snapshot · 11 MCP tools</text>
   
   <!-- Domain -->
   <text x="80" y="560" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="18" fill="#3fb950">txtscape.com</text>

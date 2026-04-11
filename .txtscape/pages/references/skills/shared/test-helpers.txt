@@ -1,16 +1,6 @@
 # Test Helpers
 
-Shared helpers for integration and E2E tests. Live in test files, not production code.
-
-## HTTP Helpers (original txtscape server)
-
-  signUp(t, baseURL, username, password) string       — creates user, returns token
-  login(t, baseURL, username, password) string         — logs in, returns token
-  putPage(t, baseURL, path, token, content) *Response  — publishes page
-  deletePage(t, baseURL, path, token) *Response        — deletes page
-  getPage(t, baseURL, path) *Response                  — fetches page (no auth)
-  readBody(t, resp) string                             — reads and closes body
-  requireStatus(t, resp, wantCode)                     — fails test if status wrong
+Shared helpers for txtscape-mcp tests. Live in test files, not production code.
 
 ## MCP Helpers (txtscape-mcp)
 
