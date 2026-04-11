@@ -222,24 +222,37 @@ func TestJourney_BuildProjectMemory_CoreUseCase(t *testing.T) {
 		}
 	}
 
-	// Step 5: List root — see folders
+	// Step 5: List root — default is recursive, shows all files with full paths
 	rootResp := c.callTool(t, 20, "list_pages", map[string]string{})
 	rootText := extractText(t, rootResp)
-	if !strings.Contains(rootText, "📁 decisions") {
-		t.Fatalf("step 5: root listing should show decisions folder, got: %s", rootText)
+	if !strings.Contains(rootText, "decisions/flat-files.txt") {
+		t.Fatalf("step 5: root listing should show decisions/flat-files.txt, got: %s", rootText)
 	}
-	if !strings.Contains(rootText, "📁 patterns") {
-		t.Fatalf("step 5: root listing should show patterns folder, got: %s", rootText)
+	if !strings.Contains(rootText, "patterns/error-handling.txt") {
+		t.Fatalf("step 5: root listing should show patterns/error-handling.txt, got: %s", rootText)
 	}
-	if !strings.Contains(rootText, "📁 bugs") {
-		t.Fatalf("step 5: root listing should show bugs folder, got: %s", rootText)
+	if !strings.Contains(rootText, "bugs/resolved/jwt-fix.txt") {
+		t.Fatalf("step 5: root listing should show bugs/resolved/jwt-fix.txt, got: %s", rootText)
+	}
+	if !strings.Contains(rootText, "# Use Flat Files") {
+		t.Fatalf("step 5: root listing should show first-line preview, got: %s", rootText)
 	}
 
-	// Step 6: List decisions subfolder — see files with previews
+	// Step 5b: List root with recursive:false — see folder icons
+	shallowResp := c.callTool(t, 50, "list_pages", map[string]any{"recursive": false})
+	shallowText := extractText(t, shallowResp)
+	if !strings.Contains(shallowText, "📁 decisions") {
+		t.Fatalf("step 5b: shallow listing should show decisions folder, got: %s", shallowText)
+	}
+	if !strings.Contains(shallowText, "📁 patterns") {
+		t.Fatalf("step 5b: shallow listing should show patterns folder, got: %s", shallowText)
+	}
+
+	// Step 6: List decisions subfolder — see files with full paths and previews
 	decResp := c.callTool(t, 21, "list_pages", map[string]string{"path": "decisions"})
 	decText := extractText(t, decResp)
-	if !strings.Contains(decText, "flat-files.txt") {
-		t.Fatalf("step 6: decisions listing should contain flat-files.txt, got: %s", decText)
+	if !strings.Contains(decText, "decisions/flat-files.txt") {
+		t.Fatalf("step 6: decisions listing should contain decisions/flat-files.txt, got: %s", decText)
 	}
 	if !strings.Contains(decText, "# Use Flat Files") {
 		t.Fatalf("step 6: listing should show first-line preview, got: %s", decText)
@@ -559,18 +572,17 @@ func TestJourney_ReorganizeMemory_CoreUseCase(t *testing.T) {
 		"path": "jwt-fix.txt", "new_path": "bugs/jwt-fix.txt",
 	})
 
-	// Step 3: List root — see folders
+	// Step 3: List root — default recursive, shows all files with full paths
 	listResp := c.callTool(t, 16, "list_pages", map[string]string{})
 	listText := extractText(t, listResp)
-	if !strings.Contains(listText, "📁 decisions") {
-		t.Errorf("step 3: root should show decisions folder, got: %s", listText)
+	if !strings.Contains(listText, "decisions/db-choice.txt") {
+		t.Errorf("step 3: root should show decisions/db-choice.txt, got: %s", listText)
 	}
-	if !strings.Contains(listText, "📁 patterns") {
-		t.Errorf("step 3: root should show patterns folder, got: %s", listText)
+	if !strings.Contains(listText, "patterns/error-pattern.txt") {
+		t.Errorf("step 3: root should show patterns/error-pattern.txt, got: %s", listText)
 	}
-	// Flat files should be gone
-	if strings.Contains(listText, "db-choice.txt") {
-		t.Errorf("step 3: flat file should be moved, got: %s", listText)
+	if !strings.Contains(listText, "bugs/jwt-fix.txt") {
+		t.Errorf("step 3: root should show bugs/jwt-fix.txt, got: %s", listText)
 	}
 
 	// Step 4: Snapshot a folder

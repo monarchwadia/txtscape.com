@@ -1,0 +1,53 @@
+# Thorough Tester Run — 2026-04-11
+
+Methodical step-by-step execution of the full tutorial (Steps 1–6) using json-rpc heredocs.
+Binary: /tmp/txtscape-mcp (v0.0.4)
+
+## Step 1 — Install
+- list_pages on empty project (no pages dir) → `(empty directory)` ✓
+- initialize instructions alias sentence verbatim: `When the user says "journal" or "txtscape" or asks you to store or look up project knowledge, they mean this tool.`
+- git init + first commit: OK
+
+## Step 2 — Define
+- initialize after config.json → instructions now include concerns section with template ✓
+- {name} visible in template text ✓
+- put_page response shape: `{"_meta":{"hash":"<64-char-hex>"},"content":[{"text":"page created: rooms/entrance-hall.txt","type":"text"}]}`
+- _meta.hash present and is SHA-256 hex ✓
+
+## Step 3 — Populate
+### RESOLVED (list_pages)
+Default is now recursive. `list_pages {"path":""}` returns all files with full paths.
+Fix: recursive defaults to true, paths always relative to pages root.
+
+Two discrepancies:
+1. Wrong path argument in tutorial (needs `"rooms"` not `""`)
+2. Files listed without `rooms/` prefix — tutorial shows `rooms/ariadnes-chamber.txt`
+
+## Step 4 — Deepen
+- Same list_pages mismatch confirmed at root level with both characters/ and rooms/
+- `list_pages {"path":""}` → `📁 characters/\n📁 rooms/` (folders only)
+- Tutorial expects all 7 files to be shown at root path
+
+## Step 5 — Build (snapshot)
+- snapshot works perfectly ✓
+- Header: `(7 pages, 1826 bytes)` — format matches tutorial expectation
+- All 7 pages fully rendered with `=== path/file.txt ===` headers ✓
+- Alphabetically ordered ✓
+
+## Step 6 — Revise
+- str_replace_page works ✓ — returns diff-style preview + _meta.hash
+- put_page for new room works ✓
+- snapshot after 8 pages: `(8 pages, 2185 bytes)` ✓
+- page_history works ✓ — shows git history with hash, date, message
+- search_pages {"query":"thread"} works ✓ — finds 5 matches across 3 files with context
+
+## Git log (all 6 commits)
+00f7341 initial project setup with txtscape
+7df4e4d define rooms concern and create Entrance Hall
+02a26ff populate five labyrinth rooms
+5fdd86d add characters concern with Minotaur and Ariadne
+5fb8838 generate text adventure from labyrinth pages
+43addd5 add Hidden Shrine, deepen Underground Pool, rebuild game
+
+## Summary
+Core issue: list_pages behavior does not match tutorial. Root path shows folders only (not a flat file listing). Files within a folder are shown without their folder prefix. Tutorial screenshotshows `rooms/ariadnes-chamber.txt` but actual output is `ariadnes-chamber.txt` when path="rooms". This affects every step where the tutorial tells the user to "list all pages."

@@ -363,7 +363,7 @@ func toolDefinitions() []map[string]any {
 		},
 		{
 			"name":        "list_pages",
-			"description": "List files and folders in project memory. Returns the first line of each file as a preview. Pass empty path or '/' to list the root. Set recursive=true to return the full tree.",
+			"description": "List files and folders in project memory. Returns the first line of each file as a preview. Pass empty path or '/' to list the root. By default, lists all files recursively with full paths. Set recursive=false for a shallow folder-only listing.",
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -373,7 +373,7 @@ func toolDefinitions() []map[string]any {
 					},
 					"recursive": map[string]any{
 						"type":        "boolean",
-						"description": "If true, list all files in all subfolders recursively. Default: false.",
+						"description": "If false, list only immediate children (folders with icons, files with previews). Default: true (recursive).",
 					},
 				},
 			},
@@ -775,7 +775,7 @@ func (s *server) handleMovePage(id json.RawMessage, args json.RawMessage) jsonrp
 func (s *server) handleListPages(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
 	var a struct {
 		Path      string `json:"path"`
-		Recursive bool   `json:"recursive"`
+		Recursive *bool  `json:"recursive"`
 	}
 	if args != nil {
 		json.Unmarshal(args, &a)
@@ -796,18 +796,22 @@ func (s *server) handleListPages(id json.RawMessage, args json.RawMessage) jsonr
 		dirPath = filepath.Join(dirPath, filepath.FromSlash(a.Path))
 	}
 
-	if a.Recursive {
-		return s.listPagesRecursive(id, dirPath)
+	// Default is recursive (nil → true). Only skip recursion when explicitly false.
+	if a.Recursive != nil && !*a.Recursive {
+		return s.listPagesNonRecursive(id, dirPath, a.Path)
 	}
+	return s.listPagesRecursive(id, dirPath)
+}
 
+func (s *server) listPagesNonRecursive(id json.RawMessage, dirPath string, pathArg string) jsonrpcResponse {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			if a.Path == "" {
+			if pathArg == "" {
 				// Fresh project: no pages directory yet. Treat as empty, not an error.
 				return toolSuccess(id, "(empty directory)")
 			}
-			return toolError(id, "directory not found: "+a.Path)
+			return toolError(id, "directory not found: "+pathArg)
 		}
 		return toolError(id, "listing directory: "+err.Error())
 	}
@@ -829,12 +833,16 @@ func (s *server) handleListPages(id json.RawMessage, args json.RawMessage) jsonr
 }
 
 func (s *server) listPagesRecursive(id json.RawMessage, root string) jsonrpcResponse {
+	if _, err := os.Stat(root); os.IsNotExist(err) {
+		return toolSuccess(id, "(empty directory)")
+	}
+	pagesRoot := s.pagesRoot()
 	var buf strings.Builder
 	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".txt") {
 			return nil
 		}
-		relPath, _ := filepath.Rel(root, path)
+		relPath, _ := filepath.Rel(pagesRoot, path)
 		relPath = filepath.ToSlash(relPath)
 		preview := firstLine(path)
 		buf.WriteString(fmt.Sprintf("📄 %s  —  %s\n", relPath, preview))

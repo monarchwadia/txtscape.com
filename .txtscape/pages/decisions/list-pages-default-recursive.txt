@@ -1,0 +1,20 @@
+# list_pages Default: Recursive
+
+## Context
+Usability testing revealed that list_pages defaulting to non-recursive was confusing.
+Agents calling `list_pages {}` saw only folder icons (`📁 rooms/`), not the files
+inside them. This required multiple follow-up calls to discover files, which agents
+often failed to do. The tutorial showed recursive output as the default, and agents
+expected it.
+
+## Decision
+- `recursive` defaults to `true` (use *bool in Go to distinguish nil from false)
+- Paths are always relative to pages root (e.g. `decisions/first.txt` not `first.txt`)
+- `recursive:false` is the opt-in escape hatch for shallow folder-only listing
+- Principle: paths returned by list_pages should be directly usable as arguments to get_page
+
+## Consequences
+- Single `list_pages {}` call gives full situational awareness
+- Tutorial output matches actual behavior
+- Agents no longer need to manually walk the tree
+- Non-recursive listing still available for large projects

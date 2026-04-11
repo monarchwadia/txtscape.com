@@ -406,11 +406,11 @@ func TestListPages_RootWithFiles_ShowsPreviews(t *testing.T) {
 	}
 }
 
-func TestListPages_WithSubfolders_ShowsFolderIcons(t *testing.T) {
-	// Business context: Agents should see folders and files distinguished clearly
-	// to navigate the memory tree efficiently.
-	// Scenario: Create a file in a subfolder, list root.
-	// Expected: Subfolder shown with folder icon.
+func TestListPages_WithSubfolders_ShowsFilesRecursively(t *testing.T) {
+	// Business context: Default listing is recursive — agents should see all
+	// files in the tree with full paths, not folder icons.
+	// Scenario: Create a file in a subfolder, list root (default).
+	// Expected: File shown with full path, no folder icons.
 	s := setupTestServer(t)
 	callTool(s, "put_page", map[string]string{
 		"path":    "decisions/first.txt",
@@ -420,11 +420,11 @@ func TestListPages_WithSubfolders_ShowsFolderIcons(t *testing.T) {
 	resp := callTool(s, "list_pages", map[string]string{})
 	text := getTextContent(t, resp)
 
-	if !strings.Contains(text, "📁") {
-		t.Error("listing should contain folder icon")
+	if !strings.Contains(text, "decisions/first.txt") {
+		t.Errorf("default listing should show full path, got: %s", text)
 	}
-	if !strings.Contains(text, "decisions") {
-		t.Error("listing should contain 'decisions' folder")
+	if strings.Contains(text, "📁") {
+		t.Errorf("default listing should not show folder icons, got: %s", text)
 	}
 }
 
@@ -509,6 +509,99 @@ func TestListPages_Subfolder_ListsContents(t *testing.T) {
 	}
 	if strings.Contains(text, "root-file.txt") {
 		t.Error("should NOT list root-file.txt in decisions/ listing")
+	}
+}
+
+func TestListPages_DefaultIsRecursive_ShowsAllFiles(t *testing.T) {
+	// Business context: Agents calling list_pages with no arguments expect to see
+	// ALL files in the memory tree, not just folder icons. The default should be
+	// recursive so a single call gives full situational awareness. Folder-only
+	// listing is available via recursive:false.
+	// Scenario: Create files in subfolders, call list_pages with no arguments.
+	// Expected: All files listed with full paths (e.g. "decisions/first.txt").
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "root.txt", "content": "# Root",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "decisions/first.txt", "content": "# First",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "rooms/hall.txt", "content": "# Hall",
+	})
+
+	resp := callTool(s, "list_pages", map[string]string{})
+	text := getTextContent(t, resp)
+
+	// Default call should show all files with full relative paths
+	for _, want := range []string{"root.txt", "decisions/first.txt", "rooms/hall.txt"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("default listing should contain %q, got:\n%s", want, text)
+		}
+	}
+	// Should show file icon, not folder icon
+	if strings.Contains(text, "📁") {
+		t.Errorf("default listing should show files (📄), not folders (📁), got:\n%s", text)
+	}
+}
+
+func TestListPages_RecursiveSubfolder_FullPathPrefix(t *testing.T) {
+	// Business context: Paths returned by list_pages must be directly usable as
+	// arguments to get_page. When listing a subfolder, files must include the
+	// folder prefix (e.g. "decisions/first.txt" not "first.txt").
+	// Scenario: Create files in decisions/, list decisions/ (default recursive).
+	// Expected: Paths include "decisions/" prefix.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "decisions/first.txt", "content": "# First",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "decisions/sub/deep.txt", "content": "# Deep",
+	})
+
+	resp := callTool(s, "list_pages", map[string]string{"path": "decisions"})
+	text := getTextContent(t, resp)
+
+	if !strings.Contains(text, "decisions/first.txt") {
+		t.Errorf("subfolder listing should include full path prefix, got:\n%s", text)
+	}
+	if !strings.Contains(text, "decisions/sub/deep.txt") {
+		t.Errorf("subfolder listing should include nested path prefix, got:\n%s", text)
+	}
+}
+
+func TestListPages_ExplicitNonRecursive_ShowsFoldersAndFiles(t *testing.T) {
+	// Business context: recursive:false is the escape hatch for agents that
+	// want folder-only discovery without the full tree. This is the old default
+	// behavior, now opt-in.
+	// Scenario: Create files in subfolders, call list_pages with recursive:false.
+	// Expected: Only immediate children shown — folders with 📁, files with 📄.
+	s := setupTestServer(t)
+	callTool(s, "put_page", map[string]string{
+		"path": "root.txt", "content": "# Root",
+	})
+	callTool(s, "put_page", map[string]string{
+		"path": "decisions/first.txt", "content": "# First",
+	})
+
+	resp := callTool(s, "list_pages", map[string]any{
+		"recursive": false,
+	})
+	text := getTextContent(t, resp)
+
+	// Should show folder icon for decisions/
+	if !strings.Contains(text, "📁") {
+		t.Errorf("non-recursive should show folder icons, got:\n%s", text)
+	}
+	if !strings.Contains(text, "decisions") {
+		t.Errorf("non-recursive should show 'decisions' folder, got:\n%s", text)
+	}
+	// Should show root.txt but NOT decisions/first.txt
+	if !strings.Contains(text, "root.txt") {
+		t.Errorf("non-recursive should show root.txt, got:\n%s", text)
+	}
+	if strings.Contains(text, "first.txt") {
+		t.Errorf("non-recursive should NOT show files from subfolders, got:\n%s", text)
 	}
 }
 

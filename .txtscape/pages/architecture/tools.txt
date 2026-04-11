@@ -10,7 +10,7 @@ Total: 11 tools
 - move_page: Rename/relocate a page. Creates dest folders, cleans up empty source folders.
 
 ## Discovery
-- list_pages: Browse directory tree with previews. Supports recursive=true.
+- list_pages: Browse directory tree with previews. Default: recursive (shows all files with full paths). Set recursive=false for shallow folder-only listing.
 - search_pages: Full-text search across all pages. Supports isRegex=true.
 - related_pages: Cross-reference graph — outgoing + incoming refs. Suffix matching (not just full path).
 
