@@ -111,6 +111,31 @@ func (s *server) buildInstructions() string {
 	return b.String()
 }
 
+// folderWarning returns a warning string if the path's top-level folder is not
+// a configured concern. Returns "" if no config exists or the folder matches.
+func (s *server) folderWarning(cleanPath string) string {
+	cfg := s.loadConfig()
+	if cfg == nil || len(cfg.Concerns) == 0 {
+		return ""
+	}
+	parts := strings.SplitN(cleanPath, "/", 2)
+	if len(parts) < 2 {
+		// file at root level, no folder
+		return ""
+	}
+	folder := parts[0]
+	for _, c := range cfg.Concerns {
+		if c.FolderName == folder {
+			return ""
+		}
+	}
+	var names []string
+	for _, c := range cfg.Concerns {
+		names = append(names, c.FolderName+"/")
+	}
+	return fmt.Sprintf("\nwarning: folder %q is not a configured concern. Known concerns: %s", folder, strings.Join(names, ", "))
+}
+
 func validatePath(raw string) (string, error) {
 	if raw == "" {
 		return "", fmt.Errorf("path is empty")
@@ -566,10 +591,11 @@ func (s *server) handlePutPage(id json.RawMessage, args json.RawMessage) jsonrpc
 	if err := os.WriteFile(fullPath, []byte(a.Content), 0o644); err != nil {
 		return toolError(id, "writing page: "+err.Error())
 	}
+	warn := s.folderWarning(clean)
 	if isUpdate {
-		return toolSuccessWithHash(id, "page updated: "+a.Path, []byte(a.Content))
+		return toolSuccessWithHash(id, "page updated: "+a.Path+warn, []byte(a.Content))
 	}
-	return toolSuccessWithHash(id, "page created: "+a.Path, []byte(a.Content))
+	return toolSuccessWithHash(id, "page created: "+a.Path+warn, []byte(a.Content))
 }
 
 func (s *server) handleAppendPage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
@@ -621,10 +647,11 @@ func (s *server) handleAppendPage(id json.RawMessage, args json.RawMessage) json
 	if err := os.WriteFile(fullPath, newContent, 0o644); err != nil {
 		return toolError(id, "writing page: "+err.Error())
 	}
+	warn := s.folderWarning(clean)
 	if isNew {
-		return toolSuccessWithHash(id, "page created: "+a.Path, newContent)
+		return toolSuccessWithHash(id, "page created: "+a.Path+warn, newContent)
 	}
-	return toolSuccessWithHash(id, "page appended: "+a.Path, newContent)
+	return toolSuccessWithHash(id, "page appended: "+a.Path+warn, newContent)
 }
 
 func (s *server) handleDeletePage(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
@@ -720,11 +747,12 @@ func (s *server) handleMovePage(id json.RawMessage, args json.RawMessage) jsonrp
 	}
 
 	// Read destination to return hash
+	warn := s.folderWarning(cleanTo)
 	data, err := os.ReadFile(toPath)
 	if err != nil {
-		return toolSuccess(id, "page moved: "+a.Path+" → "+a.NewPath)
+		return toolSuccess(id, "page moved: "+a.Path+" → "+a.NewPath+warn)
 	}
-	return toolSuccessWithHash(id, "page moved: "+a.Path+" → "+a.NewPath, data)
+	return toolSuccessWithHash(id, "page moved: "+a.Path+" → "+a.NewPath+warn, data)
 }
 
 func (s *server) handleListPages(id json.RawMessage, args json.RawMessage) jsonrpcResponse {
@@ -956,7 +984,8 @@ func (s *server) handleStrReplacePage(id json.RawMessage, args json.RawMessage) 
 	if a.NewStr == "" {
 		verb = "deleted from: "
 	}
-	return toolSuccessWithHash(id, verb+a.Path+"\n\n"+snippet, []byte(newContent))
+	warn := s.folderWarning(clean)
+	return toolSuccessWithHash(id, verb+a.Path+warn+"\n\n"+snippet, []byte(newContent))
 }
 
 func (s *server) handleSnapshot(id json.RawMessage, args json.RawMessage) jsonrpcResponse {

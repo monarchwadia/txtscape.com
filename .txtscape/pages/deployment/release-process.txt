@@ -1,0 +1,42 @@
+# Release Process
+
+## Overview
+
+Releases publish @txtscape/mcp to npm. CI/CD runs on GitHub Actions, triggered by pushing a v-prefixed tag.
+
+## Steps
+
+1. Set the version:
+   make mcp-version-set
+   (interactive — shows current version, suggests next patch bump, press enter to accept)
+
+2. Commit with the version as the message:
+   git add -A && git commit -m "x.x.x"
+
+3. Tag with a v prefix:
+   git tag vx.x.x
+
+4. Push the commit and tag:
+   git push && git push --tags
+
+5. Monitor the release:
+   https://github.com/monarchwadia/txtscape.com/actions
+
+## What CI does (on v* tag push)
+
+1. test — runs unit tests, e2e tests, checks version consistency, checks version matches tag
+2. build — cross-compiles 5 platform binaries (darwin/linux arm64+x64, windows x64)
+3. publish — creates GitHub Release with binaries, publishes @txtscape/mcp to npm
+
+## Version files
+
+The version string must be identical in these files (managed by go run ./cmd/version):
+- txtscape-mcp/main.go — serverInfo.version in initialize response
+- txtscape-mcp/npm/txtscape-mcp/package.json — npm package version
+
+## Notes
+
+- Commit message format: "x.x.x" (no v prefix)
+- Tag format: "vx.x.x" (with v prefix)
+- Currently using NODE_AUTH_TOKEN secret in the production environment for npm auth
+- TODO: switch to OIDC trusted publishing once configured on npmjs.com
