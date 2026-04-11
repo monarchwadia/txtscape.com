@@ -20,7 +20,8 @@ Implementation:
 - `buildInstructions()` calls `s.baseInstructions()` instead of referencing the old const
 
 ## Consequences
-- AI agents now say "journal is a committable project memory" by default
+- AI agents now say "journal is this project's local knowledge base, managed by txtscape" by default
+- Instructions include an explicit alias sentence: "When the user says 'journal' or 'txtscape' or asks to store/look up project knowledge, they mean this tool" — enabling agents to respond to either term
 - Users can override the word to match their project's vocabulary (e.g., "codex", "logbook", "field-notes")
 - The product name stays in tool names (`mcp_txtscape_*`), paths (`.txtscape/`), and error messages
 - Existing configs without `nickname` work unchanged — they get the default "journal"

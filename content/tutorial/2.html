@@ -42,6 +42,13 @@
         room should follow this template." You haven't created any rooms yet &mdash; you've
         defined what a room <em>looks like</em>.</p>
 
+    <div class="callout">
+        <strong><code>{name}</code> is a hint, not a substitution.</strong> The server passes
+        the template text directly to your agent as part of its instructions. The agent reads
+        <code>{name}</code> and understands it means "put the title here." Nothing is
+        auto-filled by the server &mdash; it's guidance for the AI.
+    </div>
+
     <h2>Create your first room</h2>
 
     <p>Now ask the agent to create a room. Don't dictate the content &mdash; just name it:</p>
@@ -93,6 +100,18 @@ walls close in and the air grows cold.
         editor &mdash; it's a plain text file. Edit it anytime. Pages belong to you, not
         to the agent.
     </div>
+
+    <div class="callout">
+        <strong>About <code>_meta.hash</code>:</strong> Put_page returns a hash alongside
+        its confirmation. Your agent uses this automatically to detect conflicting edits
+        &mdash; if two agents write the same page concurrently, the second write is
+        rejected. You don't manage hashes manually; the agent handles it behind the scenes.
+    </div>
+
+    <h2>Commit your progress</h2>
+
+    <pre><code>git add .txtscape
+git commit -m "define rooms concern and create Entrance Hall"</code></pre>
 
     <div class="nav-links">
         <a href="/tutorial/1">&larr; Install</a>

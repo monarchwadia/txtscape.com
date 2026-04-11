@@ -67,16 +67,13 @@
 
     <p>Your project now has two kinds of knowledge, each in its own folder:</p>
 
-    <pre><code>.txtscape/pages/
-├── rooms/
-│   ├── ariadnes-chamber.txt
-│   ├── entrance-hall.txt
-│   ├── minotaurs-lair.txt
-│   ├── twisting-corridors.txt
-│   └── underground-pool.txt
-└── characters/
-    ├── ariadne.txt
-    └── minotaur.txt</code></pre>
+    <pre><code>📄 characters/ariadne.txt  —  # Ariadne
+📄 characters/minotaur.txt  —  # The Minotaur
+📄 rooms/ariadnes-chamber.txt  —  # Ariadne's Chamber
+📄 rooms/entrance-hall.txt  —  # The Entrance Hall
+📄 rooms/minotaurs-lair.txt  —  # The Minotaur's Lair
+📄 rooms/twisting-corridors.txt  —  # Twisting Corridors
+📄 rooms/underground-pool.txt  —  # Underground Pool</code></pre>
 
     <p>Notice what you did: you followed the same pattern from step 2 &mdash; define a
         concern, give it a template, ask the agent to create content. The agent shaped its
@@ -88,6 +85,11 @@
         That's how txtscape works in real projects: you design the shape, then keep
         using it.
     </div>
+
+    <h2>Commit your progress</h2>
+
+    <pre><code>git add .txtscape
+git commit -m "add characters concern with Minotaur and Ariadne"</code></pre>
 
     <div class="nav-links">
         <a href="/tutorial/3">&larr; Populate</a>

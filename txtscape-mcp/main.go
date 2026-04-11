@@ -89,19 +89,23 @@ func (s *server) loadConfig() *txtscapeConfig {
 
 func (s *server) baseInstructions() string {
 	name := s.nickname()
-	return name + " is a committable project memory. " +
-		"Use put_page to store decisions, patterns, and knowledge as .txt files. " +
-		"Use search_pages to find relevant memories. " +
-		"Use list_pages to browse the directory tree with previews. " +
-		"Files are plain text with markdown formatting. " +
-		"All pages are stored in .txtscape/pages/ and should be committed to git. " +
-		"Path rules: files must end in .txt, folder names are lowercase alphanumeric/hyphens/underscores (max 50 chars each), max 10 folder levels deep. " +
-		"File size limit: 1MB per page. Search returns up to 100 matches. " +
-		"Use str_replace_page for surgical edits (old_str must match exactly once). " +
-		"Use snapshot to load all pages in one call. " +
-		"Use related_pages to discover cross-references between pages. " +
-		"Use page_history to see git commit history for a page. " +
-		"get_page returns a hash for optimistic concurrency — pass expected_hash to put_page to prevent stale overwrites."
+	return fmt.Sprintf(
+		"%[1]s is this project's local knowledge base, managed by txtscape. "+
+			"Use put_page to store decisions, patterns, and knowledge as .txt files. "+
+			"Use search_pages to find relevant memories. "+
+			"Use list_pages to browse the directory tree with previews. "+
+			"Files are plain text with markdown formatting. "+
+			"All %[1]s pages are stored in .txtscape/pages/ and should be committed to git. "+
+			"When the user says \"%[1]s\" or \"txtscape\" or asks you to store or look up project knowledge, they mean this tool. "+
+			"Path rules: files must end in .txt, folder names are lowercase alphanumeric/hyphens/underscores (max 50 chars each), max 10 folder levels deep. "+
+			"File size limit: 1MB per page. Search returns up to 100 matches. "+
+			"Use str_replace_page for surgical edits (old_str must match exactly once). "+
+			"Use snapshot to load all pages in one call. "+
+			"Use related_pages to discover cross-references between pages. "+
+			"Use page_history to see git commit history for a page. "+
+			"get_page returns a hash for optimistic concurrency — pass expected_hash to put_page to prevent stale overwrites.",
+		name,
+	)
 }
 
 func (s *server) buildInstructions() string {
@@ -799,6 +803,10 @@ func (s *server) handleListPages(id json.RawMessage, args json.RawMessage) jsonr
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			if a.Path == "" {
+				// Fresh project: no pages directory yet. Treat as empty, not an error.
+				return toolSuccess(id, "(empty directory)")
+			}
 			return toolError(id, "directory not found: "+a.Path)
 		}
 		return toolError(id, "listing directory: "+err.Error())

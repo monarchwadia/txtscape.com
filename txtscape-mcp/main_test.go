@@ -145,8 +145,8 @@ func TestInitialize_Instructions_ContainsUsageGuidance(t *testing.T) {
 	if !ok {
 		t.Fatal("instructions is not a string")
 	}
-	if !strings.Contains(instructions, "project memory") {
-		t.Error("instructions should mention 'project memory'")
+	if !strings.Contains(instructions, "knowledge base") {
+		t.Error("instructions should describe the knowledge base")
 	}
 }
 
@@ -438,6 +438,45 @@ func TestListPages_EmptyRoot_ReturnsEmpty(t *testing.T) {
 
 	if !strings.Contains(text, "empty") {
 		t.Errorf("expected 'empty' message, got: %s", text)
+	}
+}
+
+func TestListPages_NoPagesDir_TreatedAsEmpty(t *testing.T) {
+	// Business context: A brand new project has no .txtscape/pages/ directory.
+	// Calling list_pages should return an empty listing, not an error — otherwise
+	// agents interpret "directory not found" as a broken install rather than a
+	// fresh project.
+	// Scenario: Server with no pages directory, list root.
+	// Expected: "(empty directory)" — not an error.
+	root := t.TempDir() // no .txtscape/pages/ created
+	s := newServer(root)
+
+	resp := callTool(s, "list_pages", map[string]string{})
+	if isToolError(resp) {
+		t.Fatalf("expected empty listing for missing pages dir, got error: %s", getTextContent(t, resp))
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "empty") {
+		t.Errorf("expected 'empty' message, got: %s", text)
+	}
+}
+
+func TestInitialize_InstructionsMentionsTxtscapeAlias(t *testing.T) {
+	// Business context: The agent needs to understand that both the nickname
+	// ("journal" by default) and "txtscape" refer to the same knowledge base.
+	// An agent prompted with "use txtscape" must connect that to the journal tools.
+	// Without an explicit alias sentence, it won't.
+	// Scenario: No config, default nickname.
+	// Expected: Instructions contain an explicit sentence equating "journal" and
+	// "txtscape" so the agent responds to either term.
+	s := setupTestServer(t)
+	resp := callMethod(s, "initialize", nil)
+	inst := getInstructions(t, resp)
+
+	// The alias sentence must explicitly name both the nickname and "txtscape"
+	// together, not just mention ".txtscape/pages/" as a path.
+	if !strings.Contains(inst, `"journal" or "txtscape"`) && !strings.Contains(inst, `"txtscape" or "journal"`) {
+		t.Errorf("expected instructions to contain an explicit journal/txtscape alias sentence, got:\n%s", inst)
 	}
 }
 
@@ -2384,8 +2423,8 @@ func TestInitialize_NoConcerns_StaticInstructions(t *testing.T) {
 	resp := callMethod(s, "initialize", nil)
 	inst := getInstructions(t, resp)
 
-	if !strings.Contains(inst, "committable project memory") {
-		t.Errorf("expected static instructions, got:\n%s", inst)
+	if !strings.Contains(inst, "knowledge base") {
+		t.Errorf("expected base instructions, got:\n%s", inst)
 	}
 	// Should NOT contain concern-specific language
 	if strings.Contains(inst, "organized into the following concerns") {
@@ -2465,8 +2504,8 @@ func TestInitialize_MalformedConfig_FallsBackToStaticInstructions(t *testing.T) 
 	resp := callMethod(s, "initialize", nil)
 	inst := getInstructions(t, resp)
 
-	if !strings.Contains(inst, "committable project memory") {
-		t.Errorf("expected static instructions on malformed config, got:\n%s", inst)
+	if !strings.Contains(inst, "knowledge base") {
+		t.Errorf("expected base instructions on malformed config, got:\n%s", inst)
 	}
 	if strings.Contains(inst, "organized into the following concerns") {
 		t.Errorf("should not mention concerns when config is malformed")
