@@ -1,6 +1,7 @@
 
 .PHONY: test build dev
 .PHONY: mcp mcp-test mcp-test-unit mcp-test-integration mcp-test-e2e
+.PHONY: mcp-version mcp-version-check mcp-version-set
 
 build:
 	go build -o bin/txtscape ./cmd/txtscape
@@ -31,3 +32,13 @@ mcp-test-integration: mcp
 
 mcp-test-e2e: mcp
 	cd txtscape-mcp && go test -tags=e2e -count=1 ./e2e/
+
+# version management — reads/writes version across main.go and package.json
+mcp-version:
+	@cd txtscape-mcp && go run ./cmd/version get
+
+mcp-version-check:
+	@cd txtscape-mcp && go run ./cmd/version check
+
+mcp-version-set:
+	cd txtscape-mcp && go run ./cmd/version set

@@ -126,8 +126,9 @@ func TestInitialize_ServerInfo_ReturnsCapabilities(t *testing.T) {
 	if info["name"] != "txtscape" {
 		t.Errorf("name = %v, want txtscape", info["name"])
 	}
-	if info["version"] != "0.1.0" {
-		t.Errorf("version = %v, want 0.1.0", info["version"])
+	v, ok := info["version"].(string)
+	if !ok || v == "" {
+		t.Errorf("version = %v, want non-empty string", info["version"])
 	}
 }
 

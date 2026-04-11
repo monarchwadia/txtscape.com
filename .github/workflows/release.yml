@@ -19,6 +19,24 @@ jobs:
         working-directory: txtscape-mcp
         run: go test -count=1 ./...
 
+      - name: E2E tests
+        working-directory: txtscape-mcp
+        run: go test -tags=e2e -count=1 ./e2e/
+
+      - name: Check versions are consistent
+        working-directory: txtscape-mcp
+        run: go run ./cmd/version check
+
+      - name: Check version matches tag
+        working-directory: txtscape-mcp
+        run: |
+          version=$(go run ./cmd/version get)
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "::error::files say $version but tag is v$tag"
+            exit 1
+          fi
+
   build:
     needs: test
     runs-on: ubuntu-latest
@@ -87,6 +105,4 @@ jobs:
       #   3. Remove NODE_AUTH_TOKEN and revoke the token. All future releases use OIDC.
       - name: Publish to npm
         working-directory: txtscape-mcp/npm/txtscape-mcp
-        run: |
-          npm version --no-git-tag-version "${GITHUB_REF_NAME#v}"
-          npm publish --access public
+        run: npm publish --access public
