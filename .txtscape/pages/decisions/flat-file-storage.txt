@@ -1,16 +1,17 @@
-# Use flat .txt files instead of SQLite or PostgreSQL
+# Use flat .txt files for local project memory
 
 Status: Accepted
 Date: 2026-04-09
 
 ## Context
-txtscape started as a PostgreSQL-backed hosted platform. We explored SQLite
-as an intermediate step, but binary SQLite files in git are a blocker for
-diffing, merging, and code review.
+The txtscape-mcp local tool needs a storage layer for project memory pages.
+We considered SQLite and PostgreSQL, but binary SQLite files in git are a
+blocker for diffing, merging, and code review. A database would add
+external dependencies to what should be a zero-dep CLI tool.
 
 ## Decision
 Store pages as plain .txt files in .txtscape/pages/. One file per page.
-Folders map to URL-like paths. No database at all — the filesystem IS the
+Folders map to path-like structures. No database — the filesystem IS the
 storage layer.
 
 ## Consequences

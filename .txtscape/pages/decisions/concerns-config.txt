@@ -24,3 +24,9 @@ automatically with zero extra tool calls.
 - Graceful degradation: no config → static instructions (backward compatible)
 - Malformed config → falls back to static instructions (no crash)
 - Empty concerns array → no concern text appended
+
+## Known gaps
+- config.json has no schema validation — json.Unmarshal silently accepts
+  anything and returns nil on parse errors. No checks on folderName format,
+  required fields, or template syntax.
+- Templates are included in instructions but not auto-populated by put_page

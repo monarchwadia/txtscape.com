@@ -1,88 +1,22 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/txtscape/txtscape.com/internal/auth"
-	"github.com/txtscape/txtscape.com/internal/handler"
-	"github.com/txtscape/txtscape.com/internal/mcp"
-	"github.com/txtscape/txtscape.com/internal/pages"
 )
 
 func main() {
-	// Both modes need DATABASE_URL
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		log.Fatal("DATABASE_URL is required")
-	}
-
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, databaseURL)
-	if err != nil {
-		log.Fatalf("connecting to database: %v", err)
-	}
-	defer pool.Close()
-
-	if err := pool.Ping(ctx); err != nil {
-		log.Fatalf("pinging database: %v", err)
-	}
-
-	if err := runMigrations(ctx, pool); err != nil {
-		log.Fatalf("running migrations: %v", err)
-	}
-
-	userStore := &auth.UserStore{DB: pool}
-	tokenStore := &auth.TokenStore{DB: pool}
-	pageStore := &pages.PageStore{DB: pool}
-
 	mux := http.NewServeMux()
 
-	// Static content
-	mux.HandleFunc("GET /index.txt", handler.HandleStaticFile("content/index.txt"))
-	mux.HandleFunc("GET /spec.txt", handler.HandleStaticFile("content/spec.txt"))
-	mux.HandleFunc("GET /og-image.png", handler.HandleStaticFile("content/og-image.png"))
-	mux.HandleFunc("GET /users.txt", handler.HandleUsers(userStore))
-
-	// Auth
-	mux.HandleFunc("POST /signup", handler.HandleSignup(userStore, tokenStore))
-	mux.HandleFunc("POST /login", handler.HandleLogin(userStore, tokenStore))
-
-	// User pages — catch-all for /~ paths
-	tildeHandler := handler.HandleTilde(tokenStore, pageStore)
-
-	// MCP Streamable HTTP transport — must be registered before catch-all
-	mcpServer := mcp.NewServer(mux)
-	mcpHandler := mcpServer.HTTPHandler()
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/mcp" {
-			mcpHandler.ServeHTTP(w, r)
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
 			return
 		}
-		if strings.HasPrefix(r.URL.Path, "/~") {
-			tildeHandler(w, r)
-			return
-		}
-		// Default: serve landing page at root, 404 everything else
-		if r.URL.Path == "/" && r.Method == http.MethodGet {
-			handler.HandleStaticFile("content/index.html")(w, r)
-			return
-		}
-		http.NotFound(w, r)
+		http.ServeFile(w, r, "content/index.html")
 	})
-
-	// MCP stdio mode: run as stdin/stdout JSON-RPC server backed by the same mux
-	if len(os.Args) > 1 && os.Args[1] == "mcp" {
-		mcpServer.Serve()
-		return
-	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -94,22 +28,4 @@ func main() {
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
-}
-
-func runMigrations(ctx context.Context, pool *pgxpool.Pool) error {
-	files, err := filepath.Glob("migrations/*.sql")
-	if err != nil {
-		return fmt.Errorf("finding migration files: %w", err)
-	}
-	for _, f := range files {
-		sql, err := os.ReadFile(f)
-		if err != nil {
-			return fmt.Errorf("reading %s: %w", f, err)
-		}
-		if _, err := pool.Exec(ctx, string(sql)); err != nil {
-			return fmt.Errorf("executing %s: %w", f, err)
-		}
-		log.Printf("migration applied: %s", f)
-	}
-	return nil
 }
