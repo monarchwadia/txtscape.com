@@ -9,9 +9,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: txtscape-mcp/go.mod
 
@@ -49,9 +49,9 @@ jobs:
           - { goos: linux,   goarch: arm64, name: txtscape-mcp-linux-arm64 }
           - { goos: windows, goarch: amd64, name: txtscape-mcp-win32-x64.exe }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: txtscape-mcp/go.mod
 
@@ -73,7 +73,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download all binaries
         uses: actions/download-artifact@v8
@@ -110,7 +110,7 @@ jobs:
         if: runner.os != 'Windows'
         run: chmod +x npm/txtscape-mcp/bin/txtscape-mcp-*
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
 
@@ -125,9 +125,9 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           registry-url: https://registry.npmjs.org
