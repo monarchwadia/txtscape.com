@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: txtscape-mcp/go.mod
+
+      - name: Test
+        working-directory: txtscape-mcp
+        run: go test -count=1 ./...
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { goos: darwin,  goarch: arm64, name: txtscape-mcp-darwin-arm64 }
+          - { goos: darwin,  goarch: amd64, name: txtscape-mcp-darwin-x64 }
+          - { goos: linux,   goarch: amd64, name: txtscape-mcp-linux-x64 }
+          - { goos: linux,   goarch: arm64, name: txtscape-mcp-linux-arm64 }
+          - { goos: windows, goarch: amd64, name: txtscape-mcp-win32-x64.exe }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: txtscape-mcp/go.mod
+
+      - name: Build
+        working-directory: txtscape-mcp
+        env:
+          CGO_ENABLED: '0'
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: go build -trimpath -o "${{ matrix.name }}" .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.name }}
+          path: txtscape-mcp/${{ matrix.name }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          registry-url: https://registry.npmjs.org
+
+      - name: Download all binaries
+        uses: actions/download-artifact@v8
+        with:
+          path: txtscape-mcp/npm/txtscape-mcp/bin
+          merge-multiple: true
+
+      - name: Set executable bits
+        run: chmod +x txtscape-mcp/npm/txtscape-mcp/bin/txtscape-mcp-*
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: txtscape-mcp/npm/txtscape-mcp/bin/txtscape-mcp-*
+
+      - name: Publish to npm
+        working-directory: txtscape-mcp/npm/txtscape-mcp
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm version --no-git-tag-version "${GITHUB_REF_NAME#v}"
+          npm publish --access public

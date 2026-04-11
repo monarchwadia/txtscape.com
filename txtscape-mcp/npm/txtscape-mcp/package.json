@@ -1,0 +1,29 @@
+{
+    "name": "@txtscape/mcp",
+    "version": "0.1.0",
+    "description": "Persistent project memory for AI agents — committable, local, zero-dependency.",
+    "keywords": [
+        "mcp",
+        "ai",
+        "agents",
+        "memory",
+        "context",
+        "llm"
+    ],
+    "homepage": "https://txtscape.com",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/txtscape/txtscape.com.git",
+        "directory": "txtscape-mcp/npm/txtscape-mcp"
+    },
+    "license": "MIT",
+    "bin": {
+        "txtscape-mcp": "bin/txtscape-mcp.js"
+    },
+    "files": [
+        "bin/"
+    ],
+    "engines": {
+        "node": ">=16"
+    }
+}
