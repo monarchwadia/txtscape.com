@@ -18,6 +18,20 @@ func main() {
 		http.ServeFile(w, r, "content/index.html")
 	})
 
+	mux.HandleFunc("GET /tutorial", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "content/tutorial/index.html")
+	})
+
+	mux.HandleFunc("GET /tutorial/{step}", func(w http.ResponseWriter, r *http.Request) {
+		step := r.PathValue("step")
+		valid := map[string]bool{"1": true, "2": true, "3": true, "4": true, "5": true, "6": true}
+		if !valid[step] {
+			http.NotFound(w, r)
+			return
+		}
+		http.ServeFile(w, r, "content/tutorial/"+step+".html")
+	})
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"

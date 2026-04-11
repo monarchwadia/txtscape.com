@@ -64,6 +64,15 @@ type concern struct {
 
 type txtscapeConfig struct {
 	Concerns []concern `json:"concerns"`
+	Nickname string    `json:"nickname,omitempty"`
+}
+
+func (s *server) nickname() string {
+	cfg := s.loadConfig()
+	if cfg != nil && cfg.Nickname != "" {
+		return cfg.Nickname
+	}
+	return "journal"
 }
 
 func (s *server) loadConfig() *txtscapeConfig {
@@ -78,28 +87,32 @@ func (s *server) loadConfig() *txtscapeConfig {
 	return &cfg
 }
 
-const baseInstructions = "txtscape is a committable project memory. " +
-	"Use put_page to store decisions, patterns, and knowledge as .txt files. " +
-	"Use search_pages to find relevant memories. " +
-	"Use list_pages to browse the directory tree with previews. " +
-	"Files are plain text with markdown formatting. " +
-	"All pages are stored in .txtscape/pages/ and should be committed to git. " +
-	"Path rules: files must end in .txt, folder names are lowercase alphanumeric/hyphens/underscores (max 50 chars each), max 10 folder levels deep. " +
-	"File size limit: 1MB per page. Search returns up to 100 matches. " +
-	"Use str_replace_page for surgical edits (old_str must match exactly once). " +
-	"Use snapshot to load all pages in one call. " +
-	"Use related_pages to discover cross-references between pages. " +
-	"Use page_history to see git commit history for a page. " +
-	"get_page returns a hash for optimistic concurrency — pass expected_hash to put_page to prevent stale overwrites."
+func (s *server) baseInstructions() string {
+	name := s.nickname()
+	return name + " is a committable project memory. " +
+		"Use put_page to store decisions, patterns, and knowledge as .txt files. " +
+		"Use search_pages to find relevant memories. " +
+		"Use list_pages to browse the directory tree with previews. " +
+		"Files are plain text with markdown formatting. " +
+		"All pages are stored in .txtscape/pages/ and should be committed to git. " +
+		"Path rules: files must end in .txt, folder names are lowercase alphanumeric/hyphens/underscores (max 50 chars each), max 10 folder levels deep. " +
+		"File size limit: 1MB per page. Search returns up to 100 matches. " +
+		"Use str_replace_page for surgical edits (old_str must match exactly once). " +
+		"Use snapshot to load all pages in one call. " +
+		"Use related_pages to discover cross-references between pages. " +
+		"Use page_history to see git commit history for a page. " +
+		"get_page returns a hash for optimistic concurrency — pass expected_hash to put_page to prevent stale overwrites."
+}
 
 func (s *server) buildInstructions() string {
 	cfg := s.loadConfig()
+	base := s.baseInstructions()
 	if cfg == nil || len(cfg.Concerns) == 0 {
-		return baseInstructions
+		return base
 	}
 
 	var b strings.Builder
-	b.WriteString(baseInstructions)
+	b.WriteString(base)
 	b.WriteString("\n\nThis project's memory is organized into the following concerns:\n")
 	for _, c := range cfg.Concerns {
 		b.WriteString(fmt.Sprintf("- %s/ (%s): %s\n", c.FolderName, c.Label, c.Description))

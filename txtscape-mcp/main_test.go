@@ -2669,3 +2669,88 @@ func TestPutPage_UnknownFolder_WarningListsKnownConcerns(t *testing.T) {
 		t.Errorf("warning should mention 'learnings/', got: %s", text)
 	}
 }
+
+// --- Nickname config tests ---
+
+func TestNickname_NoConfig_DefaultsToJournal(t *testing.T) {
+	// Business context: Projects without config.json should use "journal" as
+	// the default nickname for the knowledge base.
+	// Scenario: No config.json exists.
+	// Expected: nickname() returns "journal".
+	s := setupTestServer(t)
+	if got := s.nickname(); got != "journal" {
+		t.Errorf("expected nickname 'journal', got %q", got)
+	}
+}
+
+func TestNickname_ConfigWithNickname_UsesConfigValue(t *testing.T) {
+	// Business context: Projects can customize the nickname via config.json
+	// so the agent uses their preferred term (e.g. "ledger", "codex").
+	// Scenario: config.json has "nickname": "codex".
+	// Expected: nickname() returns "codex".
+	s := setupTestServer(t)
+	configDir := filepath.Join(s.root, ".txtscape")
+	os.WriteFile(filepath.Join(configDir, "config.json"), []byte(`{"nickname":"codex"}`), 0o644)
+
+	if got := s.nickname(); got != "codex" {
+		t.Errorf("expected nickname 'codex', got %q", got)
+	}
+}
+
+func TestNickname_ConfigWithEmptyNickname_DefaultsToJournal(t *testing.T) {
+	// Business context: An empty string nickname should fall back to default.
+	// Scenario: config.json has "nickname": "".
+	// Expected: nickname() returns "journal".
+	s := setupTestServer(t)
+	configDir := filepath.Join(s.root, ".txtscape")
+	os.WriteFile(filepath.Join(configDir, "config.json"), []byte(`{"nickname":""}`), 0o644)
+
+	if got := s.nickname(); got != "journal" {
+		t.Errorf("expected nickname 'journal', got %q", got)
+	}
+}
+
+func TestNickname_ConfigWithoutNicknameField_DefaultsToJournal(t *testing.T) {
+	// Business context: Existing config.json files without the nickname field
+	// should continue to work with the default.
+	// Scenario: config.json has concerns but no nickname field.
+	// Expected: nickname() returns "journal".
+	s := setupTestServerWithConcerns(t, []map[string]string{
+		{"folderName": "decisions", "label": "Decisions", "description": "d"},
+	})
+
+	if got := s.nickname(); got != "journal" {
+		t.Errorf("expected nickname 'journal', got %q", got)
+	}
+}
+
+func TestInitialize_NoConfig_InstructionsUseJournal(t *testing.T) {
+	// Business context: When no config exists, instructions should refer to
+	// the knowledge base as "journal" (the default nickname), not "txtscape".
+	// Scenario: No config.json.
+	// Expected: Instructions contain "journal" as the conversational name.
+	s := setupTestServer(t)
+	resp := callMethod(s, "initialize", nil)
+	inst := getInstructions(t, resp)
+
+	if !strings.Contains(inst, "journal") {
+		t.Errorf("expected instructions to use default nickname 'journal', got:\n%s", inst)
+	}
+}
+
+func TestInitialize_CustomNickname_InstructionsUseIt(t *testing.T) {
+	// Business context: When config.json specifies a nickname, instructions
+	// should use that term so the agent speaks the project's language.
+	// Scenario: config.json has "nickname": "codex".
+	// Expected: Instructions say "codex" instead of "journal".
+	s := setupTestServer(t)
+	configDir := filepath.Join(s.root, ".txtscape")
+	os.WriteFile(filepath.Join(configDir, "config.json"), []byte(`{"nickname":"codex"}`), 0o644)
+
+	resp := callMethod(s, "initialize", nil)
+	inst := getInstructions(t, resp)
+
+	if !strings.Contains(inst, "codex") {
+		t.Errorf("expected instructions to use nickname 'codex', got:\n%s", inst)
+	}
+}

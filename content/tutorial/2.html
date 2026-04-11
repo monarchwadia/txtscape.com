@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Your First Room — txtscape tutorial</title>
+    <meta name="description"
+        content="Create your first txtscape page — a tavern in the game world. Store knowledge the AI agent can read and use.">
+    <style>
+        body {
+            background: #0d1117;
+            color: #e6edf3;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+            max-width: 640px;
+            margin: 60px auto;
+            padding: 0 24px;
+            line-height: 1.7;
+        }
+
+        a {
+            color: #3fb950;
+        }
+
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 8px;
+        }
+
+        h2 {
+            font-size: 1.2em;
+            margin-top: 40px;
+            margin-bottom: 8px;
+        }
+
+        code {
+            background: #161b22;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .nav-header {
+            font-size: 0.85em;
+            margin-bottom: 32px;
+        }
+
+        .nav-header a {
+            color: #7d8590;
+            text-decoration: none;
+        }
+
+        .nav-header a:hover {
+            color: #3fb950;
+        }
+
+        .nav-header .sep {
+            color: #30363d;
+            margin: 0 4px;
+        }
+
+        .step-num {
+            color: #3fb950;
+            font-size: 0.85em;
+            margin-bottom: 4px;
+        }
+
+        .lead {
+            color: #7d8590;
+            font-size: 0.95em;
+            margin-top: 4px;
+        }
+
+        .file-label {
+            font-size: 0.8em;
+            color: #7d8590;
+            margin-bottom: -8px;
+            margin-top: 20px;
+        }
+
+        .agent-prompt {
+            margin: 20px 0;
+            padding: 16px 20px;
+            background: #161b22;
+            border-left: 3px solid #3fb950;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .agent-prompt .label {
+            font-size: 0.8em;
+            color: #3fb950;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .callout {
+            margin: 24px 0;
+            padding: 16px 20px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 48px;
+            padding-top: 24px;
+            border-top: 1px solid #30363d;
+            font-size: 0.9em;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .prompt {
+            color: #484f58;
+            font-size: 0.85em;
+            margin-top: 48px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="nav-header">
+        <a href="/">txtscape</a>
+        <span class="sep">/</span>
+        <a href="/tutorial">tutorial</a>
+    </nav>
+
+    <p class="step-num">Step 2 of 6</p>
+    <h1>Your First Room</h1>
+    <p class="lead">Describe a tavern in plain text. Your agent will remember it forever.</p>
+
+    <h2>Create a page</h2>
+
+    <p>You're going to describe the starting location of your game. Not in code &mdash;
+        in a txtscape page. Open your AI chat and say:</p>
+
+    <div class="agent-prompt">
+        <div class="label">Tell your agent</div>
+        "Create a txtscape page at <strong>rooms/tavern.txt</strong> with this content:<br><br>
+        The Rusty Flagon is a dimly lit tavern. Candles flicker on rough wooden tables.
+        A grizzled bartender polishes a cracked mug behind the counter. The air smells
+        of ale and smoke.<br><br>
+        Exits: north leads to the Dark Forest.<br><br>
+        Items: a rusty sword hangs on the wall behind the bar."
+    </div>
+
+    <p>The agent calls the <code>put_page</code> tool and creates a file at
+        <code>.txtscape/pages/rooms/tavern.txt</code>. You can open it in your editor &mdash;
+        it's just a text file:
+    </p>
+
+    <p class="file-label">.txtscape/pages/rooms/tavern.txt</p>
+    <pre><code>The Rusty Flagon is a dimly lit tavern. Candles flicker
+on rough wooden tables. A grizzled bartender polishes a
+cracked mug behind the counter. The air smells of ale
+and smoke.
+
+Exits: north leads to the Dark Forest.
+
+Items: a rusty sword hangs on the wall behind the bar.</code></pre>
+
+    <h2>Read it back</h2>
+
+    <p>Now verify your agent can access the page:</p>
+
+    <div class="agent-prompt">
+        <div class="label">Tell your agent</div>
+        "Read the rooms/tavern page from txtscape."
+    </div>
+
+    <p>The agent calls <code>get_page</code> and reads the tavern description back to you.
+        Same content, retrieved from your project's persistent memory.</p>
+
+    <h2>What just happened</h2>
+
+    <p>You stored game knowledge <em>outside your code</em>. This page lives in your repo
+        as a plain <code>.txt</code> file. It persists across conversations. Tomorrow, next
+        week, a month from now &mdash; when any AI agent opens this project, the tavern is
+        still there.</p>
+
+    <p>This is the core idea: <strong>txtscape is persistent memory for your AI agent.</strong>
+        Knowledge goes in as pages. The agent reads them whenever it needs context.</p>
+
+    <div class="callout">
+        You could have created the file manually in your editor instead of asking the agent.
+        txtscape pages are just files &mdash; there's nothing magical about how they're created.
+        The agent uses MCP tools, but you can always edit them directly.
+    </div>
+
+    <div class="nav-links">
+        <a href="/tutorial/1">&larr; Setup</a>
+        <a href="/tutorial/3">Summoning Code &rarr;</a>
+    </div>
+
+    <p class="prompt">$ _</p>
+</body>
+
+</html>

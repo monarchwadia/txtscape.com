@@ -1,0 +1,27 @@
+# Configurable Nickname for the Knowledge Base
+
+## Context
+The MCP server's instructions always referred to itself as "txtscape" — a product name, not a natural word. When an AI agent says "store this in txtscape," it sounds robotic. Users and agents benefit from vocabulary alignment: a familiar word that describes what the tool does rather than what it's called.
+
+We explored alternatives: "notebook" (Jupyter collision), "memory" (RAM collision), and many others. "Journal" won — it's familiar, unambiguous, and describes a place you write things down.
+
+## Decision
+Added an optional `nickname` field to `.txtscape/config.json`. The nickname is interpolated into the MCP server's `instructions` field (returned in the `initialize` response), replacing the hardcoded product name in conversational framing.
+
+- Default nickname: `"journal"`
+- Config example: `{ "nickname": "codex" }`
+- The product name "txtscape" remains in technical references (tool names, paths, errors)
+- Only the conversational framing in `instructions` uses the nickname
+
+Implementation:
+- `txtscapeConfig` struct gained a `Nickname string` field
+- `server.nickname()` method reads config, falls back to `"journal"`
+- `baseInstructions` changed from a `const` to a method `server.baseInstructions()` that interpolates the nickname
+- `buildInstructions()` calls `s.baseInstructions()` instead of referencing the old const
+
+## Consequences
+- AI agents now say "journal is a committable project memory" by default
+- Users can override the word to match their project's vocabulary (e.g., "codex", "logbook", "field-notes")
+- The product name stays in tool names (`mcp_txtscape_*`), paths (`.txtscape/`), and error messages
+- Existing configs without `nickname` work unchanged — they get the default "journal"
+- The `folderWarning` helper was not changed — it uses neutral language ("not a configured concern") and doesn't need the nickname

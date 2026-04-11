@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Expanding the World — txtscape tutorial</title>
+    <meta name="description"
+        content="Add more rooms, items, and a character to your txtscape game world. Organize pages with concerns.">
+    <style>
+        body {
+            background: #0d1117;
+            color: #e6edf3;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+            max-width: 640px;
+            margin: 60px auto;
+            padding: 0 24px;
+            line-height: 1.7;
+        }
+
+        a {
+            color: #3fb950;
+        }
+
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 8px;
+        }
+
+        h2 {
+            font-size: 1.2em;
+            margin-top: 40px;
+            margin-bottom: 8px;
+        }
+
+        code {
+            background: #161b22;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .nav-header {
+            font-size: 0.85em;
+            margin-bottom: 32px;
+        }
+
+        .nav-header a {
+            color: #7d8590;
+            text-decoration: none;
+        }
+
+        .nav-header a:hover {
+            color: #3fb950;
+        }
+
+        .nav-header .sep {
+            color: #30363d;
+            margin: 0 4px;
+        }
+
+        .step-num {
+            color: #3fb950;
+            font-size: 0.85em;
+            margin-bottom: 4px;
+        }
+
+        .lead {
+            color: #7d8590;
+            font-size: 0.95em;
+            margin-top: 4px;
+        }
+
+        .file-label {
+            font-size: 0.8em;
+            color: #7d8590;
+            margin-bottom: -8px;
+            margin-top: 20px;
+        }
+
+        .agent-prompt {
+            margin: 20px 0;
+            padding: 16px 20px;
+            background: #161b22;
+            border-left: 3px solid #3fb950;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .agent-prompt .label {
+            font-size: 0.8em;
+            color: #3fb950;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .callout {
+            margin: 24px 0;
+            padding: 16px 20px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 48px;
+            padding-top: 24px;
+            border-top: 1px solid #30363d;
+            font-size: 0.9em;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .prompt {
+            color: #484f58;
+            font-size: 0.85em;
+            margin-top: 48px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="nav-header">
+        <a href="/">txtscape</a>
+        <span class="sep">/</span>
+        <a href="/tutorial">tutorial</a>
+    </nav>
+
+    <p class="step-num">Step 4 of 6</p>
+    <h1>Expanding the World</h1>
+    <p class="lead">One room is not much of an adventure. Let's build a world.</p>
+
+    <h2>Add more rooms</h2>
+
+    <div class="agent-prompt">
+        <div class="label">Tell your agent</div>
+        "Create these txtscape pages:<br><br>
+        <strong>rooms/forest.txt:</strong><br>
+        The Dark Forest is thick with ancient oaks. Moonlight barely pierces the canopy.
+        Strange sounds echo between the trees. A narrow path winds deeper into the darkness.<br>
+        Exits: south leads to the Rusty Flagon. East leads to the Crystal Cave.<br>
+        Items: a torn map lies half-buried in the leaves.<br><br>
+        <strong>rooms/cave.txt:</strong><br>
+        The Crystal Cave glitters with phosphorescent minerals. Stalactites drip into
+        still pools of water. Deep in the cave, a faint blue glow pulses rhythmically.<br>
+        Exits: west leads to the Dark Forest.<br>
+        Items: a glowing gem sits on a natural stone pedestal."
+    </div>
+
+    <p>The agent calls <code>put_page</code> twice, creating two new pages in the
+        <code>rooms/</code> folder. Your game world now has three connected locations:
+    </p>
+
+    <pre><code>Tavern --north--&gt; Forest --east--&gt; Cave</code></pre>
+
+    <h2>Add a character</h2>
+
+    <div class="agent-prompt">
+        <div class="label">Tell your agent</div>
+        "Create a txtscape page at <strong>characters/bartender.txt:</strong><br><br>
+        Grimjaw is the bartender at the Rusty Flagon. He's seen everything and trusts
+        no one. He has a gravelly voice and a scar across his left eye.<br><br>
+        Dialogue: 'Careful in those woods, stranger. People go in. Not all of 'em come back.'<br><br>
+        Knows about: the Crystal Cave, the glowing gem, and an old legend about the
+        Eldorian kings."
+    </div>
+
+    <p>Notice the folder structure that's forming:</p>
+
+    <pre><code>.txtscape/pages/
+├── rooms/
+│   ├── tavern.txt
+│   ├── forest.txt
+│   └── cave.txt
+└── characters/
+    └── bartender.txt</code></pre>
+
+    <p>Rooms in one folder, characters in another. The organization is natural &mdash;
+        you chose folder names that match your domain. txtscape doesn't enforce a structure;
+        you shape it to fit your project.</p>
+
+    <h2>Regenerate the game</h2>
+
+    <p>Now ask the agent to rebuild the game using <em>all</em> the knowledge:</p>
+
+    <div class="agent-prompt">
+        <div class="label">Tell your agent</div>
+        "Use txtscape's snapshot tool to read all pages at once. Then update index.html
+        with all three rooms connected by their exits, the bartender NPC with a talk button
+        that shows his dialogue, and an inventory system so the player can pick up and
+        carry items."
+    </div>
+
+    <p>The agent calls <code>snapshot</code> &mdash; a single tool call that loads every
+        page. It now has full context: three rooms with their connections, a character with
+        dialogue, and items scattered across locations.</p>
+
+    <p>Open <code>index.html</code>. You should be able to:</p>
+
+    <ul>
+        <li>Walk from the tavern to the forest to the cave and back</li>
+        <li>Pick up items &mdash; the rusty sword, torn map, glowing gem</li>
+        <li>Talk to Grimjaw and hear his warning</li>
+    </ul>
+
+    <p>All of it came from your txtscape pages. The agent read plain text and produced
+        a working game.</p>
+
+    <div class="callout">
+        <strong>Snapshot vs. individual reads:</strong> <code>snapshot</code> loads all
+        pages in one call &mdash; efficient when the agent needs full context.
+        <code>get_page</code> reads one page at a time &mdash; better for targeted lookups.
+        The agent will pick the right tool based on what you ask.
+    </div>
+
+    <div class="nav-links">
+        <a href="/tutorial/3">&larr; Summoning Code</a>
+        <a href="/tutorial/5">The Living World &rarr;</a>
+    </div>
+
+    <p class="prompt">$ _</p>
+</body>
+
+</html>
