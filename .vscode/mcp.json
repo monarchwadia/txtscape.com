@@ -2,7 +2,8 @@
   "servers": {
     "txtscape": {
       "type": "stdio",
-      "command": "txtscape-mcp",
+      "command": "npx",
+      "args": ["-y", "@txtscape/mcp"],
       "cwd": "${workspaceFolder}"
     }
   }

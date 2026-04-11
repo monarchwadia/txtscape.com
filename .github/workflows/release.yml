@@ -69,8 +69,52 @@ jobs:
           name: ${{ matrix.name }}
           path: txtscape-mcp/${{ matrix.name }}
 
-  publish:
+  assemble:
     needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all binaries
+        uses: actions/download-artifact@v8
+        with:
+          path: txtscape-mcp/npm/txtscape-mcp/bin
+          merge-multiple: true
+
+      - name: Set executable bits
+        run: chmod +x txtscape-mcp/npm/txtscape-mcp/bin/txtscape-mcp-*
+
+      - name: Upload assembled package
+        uses: actions/upload-artifact@v7
+        with:
+          name: npm-package
+          path: txtscape-mcp/npm/
+
+  prepublish:
+    needs: assemble
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest }
+          - { os: macos-latest }
+          - { os: windows-latest }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Download assembled package
+        uses: actions/download-artifact@v8
+        with:
+          name: npm-package
+          path: npm/
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Pre-publish smoke test
+        run: node npm/prepublish/test.js
+
+  publish:
+    needs: prepublish
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -84,14 +128,11 @@ jobs:
           node-version: '24'
           registry-url: https://registry.npmjs.org
 
-      - name: Download all binaries
+      - name: Download assembled package
         uses: actions/download-artifact@v8
         with:
-          path: txtscape-mcp/npm/txtscape-mcp/bin
-          merge-multiple: true
-
-      - name: Set executable bits
-        run: chmod +x txtscape-mcp/npm/txtscape-mcp/bin/txtscape-mcp-*
+          name: npm-package
+          path: txtscape-mcp/npm/
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
