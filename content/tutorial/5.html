@@ -4,145 +4,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>The Living World — txtscape tutorial</title>
+    <title>Build — txtscape tutorial</title>
     <meta name="description"
-        content="Change a txtscape page and watch the AI regenerate your game to match. The aha moment.">
-    <style>
-        body {
-            background: #0d1117;
-            color: #e6edf3;
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-            max-width: 640px;
-            margin: 60px auto;
-            padding: 0 24px;
-            line-height: 1.7;
-        }
-
-        a {
-            color: #3fb950;
-        }
-
-        h1 {
-            font-size: 1.8em;
-            margin-bottom: 8px;
-        }
-
-        h2 {
-            font-size: 1.2em;
-            margin-top: 40px;
-            margin-bottom: 8px;
-        }
-
-        code {
-            background: #161b22;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.9em;
-        }
-
-        pre {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 16px;
-            overflow-x: auto;
-            font-size: 0.85em;
-            line-height: 1.5;
-        }
-
-        pre code {
-            background: none;
-            padding: 0;
-        }
-
-        .nav-header {
-            font-size: 0.85em;
-            margin-bottom: 32px;
-        }
-
-        .nav-header a {
-            color: #7d8590;
-            text-decoration: none;
-        }
-
-        .nav-header a:hover {
-            color: #3fb950;
-        }
-
-        .nav-header .sep {
-            color: #30363d;
-            margin: 0 4px;
-        }
-
-        .step-num {
-            color: #3fb950;
-            font-size: 0.85em;
-            margin-bottom: 4px;
-        }
-
-        .lead {
-            color: #7d8590;
-            font-size: 0.95em;
-            margin-top: 4px;
-        }
-
-        .file-label {
-            font-size: 0.8em;
-            color: #7d8590;
-            margin-bottom: -8px;
-            margin-top: 20px;
-        }
-
-        .agent-prompt {
-            margin: 20px 0;
-            padding: 16px 20px;
-            background: #161b22;
-            border-left: 3px solid #3fb950;
-            border-radius: 0 4px 4px 0;
-            font-size: 0.9em;
-            line-height: 1.6;
-        }
-
-        .agent-prompt .label {
-            font-size: 0.8em;
-            color: #3fb950;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .callout {
-            margin: 24px 0;
-            padding: 16px 20px;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            font-size: 0.9em;
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 48px;
-            padding-top: 24px;
-            border-top: 1px solid #30363d;
-            font-size: 0.9em;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
-        }
-
-        .prompt {
-            color: #484f58;
-            font-size: 0.85em;
-            margin-top: 48px;
-        }
-    </style>
+        content="Ask your AI agent to generate a playable text adventure from all the pages in txtscape.">
+    <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
@@ -153,91 +18,68 @@
     </nav>
 
     <p class="step-num">Step 5 of 6</p>
-    <h1>The Living World</h1>
-    <p class="lead">Change a page. The AI adapts everything to match.</p>
+    <h1>Build</h1>
+    <p class="lead">Five rooms. Two characters. Time to make it playable.</p>
 
-    <h2>Change how the cave works</h2>
-
-    <p>The Crystal Cave is too easy &mdash; the player just walks in and takes the gem.
-        Let's make it more interesting. Ask the agent to update the page:</p>
+    <h2>Generate the game</h2>
 
     <div class="agent-prompt">
         <div class="label">Tell your agent</div>
-        "Update the rooms/cave page in txtscape. The cave has partially collapsed.
-        The glowing gem is now trapped behind rubble &mdash; the player needs the rusty
-        sword to clear it. Add a new exit: down leads to the Underground River."
+        "Use txtscape's snapshot tool to read all pages at once. Then build a text
+        adventure game in index.html &mdash; a single HTML file with inline CSS and
+        JavaScript. Show the room description, list exits as clickable links, and
+        let the player interact with characters when they're in the same room.
+        Use a dark theme with a monospace font. Start the player in the Entrance Hall."
     </div>
 
-    <p>The agent uses <code>str_replace_page</code> or <code>put_page</code> to update
-        the cave. The page now reflects the new reality.</p>
+    <p>Watch what the agent does:</p>
 
-    <h2>Add the new room</h2>
+    <ol>
+        <li>Calls <code>snapshot</code> to load all seven pages in one request</li>
+        <li>Reads the room descriptions, exits, notable features</li>
+        <li>Reads the character descriptions, locations, dialogue</li>
+        <li>Generates <code>index.html</code> with a working game</li>
+    </ol>
 
-    <div class="agent-prompt">
-        <div class="label">Tell your agent</div>
-        "Create a txtscape page at <strong>rooms/river.txt:</strong><br><br>
-        The Underground River flows through a carved stone channel. The air is cold and
-        damp. Ancient runes glow faintly on the walls, casting blue light across the
-        dark water. The river disappears into darkness downstream.<br><br>
-        Exits: up leads to the Crystal Cave.<br><br>
-        Items: a rune-etched key rests on a stone ledge above the water."
-    </div>
+    <h2>Open it</h2>
 
-    <p>Your game world just grew:</p>
-
-    <pre><code>Tavern --north--&gt; Forest --east--&gt; Cave --down--&gt; River</code></pre>
-
-    <h2>Regenerate</h2>
-
-    <div class="agent-prompt">
-        <div class="label">Tell your agent</div>
-        "Read all txtscape pages with snapshot. The cave has changed and there's a new room.
-        Update index.html so the cave shows the collapse, the gem requires the rusty sword
-        to retrieve, and players can explore the Underground River."
-    </div>
-
-    <p>Open <code>index.html</code>. The game has changed:</p>
+    <p>Open <code>index.html</code> in your browser. You should be able to:</p>
 
     <ul>
-        <li>The cave description mentions the collapse</li>
-        <li>The gem can't be picked up without the sword</li>
-        <li>A new "Underground River" exit appears in the cave</li>
-        <li>The river room works &mdash; runes, key, navigation back up</li>
+        <li>Read the Entrance Hall description &mdash; the stone archway, the last daylight</li>
+        <li>Click exits to navigate between rooms</li>
+        <li>Find Ariadne in her chamber and hear her warning</li>
+        <li>Reach the Minotaur's Lair and face the beast</li>
+        <li>Pick up the bronze sword, the ball of thread, the golden treasure</li>
     </ul>
 
-    <h2>The aha moment</h2>
+    <p>The exact layout and interactions depend on your agent's choices. That's fine &mdash;
+        the important thing is that every room, character, and connection came from your
+        txtscape pages.</p>
 
-    <p>You edited a text file. The entire game adapted.</p>
+    <h2>The key insight</h2>
 
-    <p>This is the power of persistent, structured memory:</p>
+    <p>The AI didn't invent your labyrinth. It <em>read your pages</em> and built
+        the game from them. The room descriptions, the character dialogue, the map of
+        connections &mdash; all sourced from txtscape.</p>
 
-    <ul>
-        <li><strong>You edit knowledge, not code.</strong> The game world lives in txtscape
-            pages. The code is derived from them.</li>
-        <li><strong>The AI stays consistent.</strong> It reads the current state of all pages
-            every time you ask it to generate code. No stale context.</li>
-        <li><strong>Changes propagate.</strong> Update one page, regenerate, everything aligns.
-            The cave collapse, the sword requirement, the new exit &mdash; all reflected
-            automatically.</li>
-    </ul>
+    <p><strong>Your pages are the source of truth. The code is derived from them.</strong></p>
 
-    <p>No more "the AI forgot the cave has a gem" or "the forest description changed but
-        the game still shows the old one." The pages are the source of truth. The code
-        follows.</p>
+    <p>Without txtscape, you'd describe the entire game in chat, the agent would generate
+        code, and next session it would forget everything. With txtscape, the knowledge
+        persists. Every session, every agent, starts from the same source.</p>
 
     <div class="callout">
-        <strong>Try this:</strong> Open your <code>.txtscape/pages/</code> directory in your
-        editor. Edit a room's description directly &mdash; change a color, rename an item,
-        add an exit. Then ask the agent to regenerate. It reads the updated pages and the
-        code matches. Human edits and agent edits are interchangeable.
+        <strong>Snapshot vs. individual reads:</strong> <code>snapshot</code> loads all
+        pages in one call &mdash; ideal when the agent needs the full picture.
+        <code>get_page</code> reads one page at a time &mdash; better for targeted lookups.
+        The agent picks the right tool based on what you ask.
     </div>
 
     <div class="nav-links">
-        <a href="/tutorial/4">&larr; Expanding the World</a>
-        <a href="/tutorial/6">Mastery &rarr;</a>
+        <a href="/tutorial/4">&larr; Deepen</a>
+        <a href="/tutorial/6">Revise &rarr;</a>
     </div>
-
-    <p class="prompt">$ _</p>
 </body>
 
 </html>

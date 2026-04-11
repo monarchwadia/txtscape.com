@@ -4,144 +4,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Setup — txtscape tutorial</title>
-    <meta name="description" content="Install txtscape, configure your IDE, and create the Shadows of Eldoria project.">
-    <style>
-        body {
-            background: #0d1117;
-            color: #e6edf3;
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-            max-width: 640px;
-            margin: 60px auto;
-            padding: 0 24px;
-            line-height: 1.7;
-        }
-
-        a {
-            color: #3fb950;
-        }
-
-        h1 {
-            font-size: 1.8em;
-            margin-bottom: 8px;
-        }
-
-        h2 {
-            font-size: 1.2em;
-            margin-top: 40px;
-            margin-bottom: 8px;
-        }
-
-        code {
-            background: #161b22;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.9em;
-        }
-
-        pre {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 16px;
-            overflow-x: auto;
-            font-size: 0.85em;
-            line-height: 1.5;
-        }
-
-        pre code {
-            background: none;
-            padding: 0;
-        }
-
-        .nav-header {
-            font-size: 0.85em;
-            margin-bottom: 32px;
-        }
-
-        .nav-header a {
-            color: #7d8590;
-            text-decoration: none;
-        }
-
-        .nav-header a:hover {
-            color: #3fb950;
-        }
-
-        .nav-header .sep {
-            color: #30363d;
-            margin: 0 4px;
-        }
-
-        .step-num {
-            color: #3fb950;
-            font-size: 0.85em;
-            margin-bottom: 4px;
-        }
-
-        .lead {
-            color: #7d8590;
-            font-size: 0.95em;
-            margin-top: 4px;
-        }
-
-        .file-label {
-            font-size: 0.8em;
-            color: #7d8590;
-            margin-bottom: -8px;
-            margin-top: 20px;
-        }
-
-        .callout {
-            margin: 24px 0;
-            padding: 16px 20px;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            font-size: 0.9em;
-        }
-
-        .agent-prompt {
-            margin: 20px 0;
-            padding: 16px 20px;
-            background: #161b22;
-            border-left: 3px solid #3fb950;
-            border-radius: 0 4px 4px 0;
-            font-size: 0.9em;
-            line-height: 1.6;
-        }
-
-        .agent-prompt .label {
-            font-size: 0.8em;
-            color: #3fb950;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 48px;
-            padding-top: 24px;
-            border-top: 1px solid #30363d;
-            font-size: 0.9em;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
-        }
-
-        .prompt {
-            color: #484f58;
-            font-size: 0.85em;
-            margin-top: 48px;
-        }
-    </style>
+    <title>Install — txtscape tutorial</title>
+    <meta name="description" content="Install txtscape, configure your IDE, and create the Minotaur's Labyrinth project.">
+    <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
@@ -152,18 +17,18 @@
     </nav>
 
     <p class="step-num">Step 1 of 6</p>
-    <h1>Setup</h1>
+    <h1>Install</h1>
     <p class="lead">Create the project and connect txtscape to your IDE.</p>
 
     <h2>Create your project</h2>
 
-    <pre><code>mkdir shadows-of-eldoria
-cd shadows-of-eldoria
+    <pre><code>mkdir labyrinth
+cd labyrinth
 npm init -y
 touch index.html</code></pre>
 
     <p>That's your whole project: a folder with a <code>package.json</code> and an empty
-        <code>index.html</code>. The game will live entirely in that one HTML file.
+        <code>index.html</code>. The game will live in that one HTML file.
     </p>
 
     <h2>Configure your IDE</h2>
@@ -207,21 +72,19 @@ touch index.html</code></pre>
 
     <h2>What you have so far</h2>
 
-    <pre><code>shadows-of-eldoria/
+    <pre><code>labyrinth/
 ├── .vscode/
 │   └── mcp.json
 ├── index.html          (empty)
 └── package.json</code></pre>
 
     <p>No game yet. No content. Just a project wired up to an AI agent that can remember things.
-        Next, you'll give it something to remember.</p>
+        Next, you'll teach it the shape of your world.</p>
 
     <div class="nav-links">
         <a href="/tutorial">&larr; Overview</a>
-        <a href="/tutorial/2">Your First Room &rarr;</a>
+        <a href="/tutorial/2">Define &rarr;</a>
     </div>
-
-    <p class="prompt">$ _</p>
 </body>
 
 </html>

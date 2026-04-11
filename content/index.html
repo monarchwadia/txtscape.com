@@ -22,105 +22,7 @@
     <meta name="twitter:description"
         content="Persistent project memory for AI agents. Plain text pages committed to git. An MCP server for any IDE.">
 
-    <style>
-        body {
-            background: #0d1117;
-            color: #e6edf3;
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-            max-width: 640px;
-            margin: 80px auto;
-            padding: 0 24px;
-            line-height: 1.7;
-        }
-
-        a {
-            color: #3fb950;
-        }
-
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 0;
-        }
-
-        .tagline {
-            color: #7d8590;
-            font-size: 1.1em;
-            margin-top: 8px;
-        }
-
-        .hero-cta {
-            margin-top: 32px;
-            padding: 20px 24px;
-            background: #161b22;
-            border: 1px solid #3fb950;
-            border-radius: 8px;
-        }
-
-        .hero-cta p {
-            margin: 0 0 12px;
-            font-size: 0.95em;
-        }
-
-        .hero-cta pre {
-            margin: 0;
-            padding: 12px;
-            background: #0d1117;
-            border-radius: 4px;
-            color: #3fb950;
-            font-size: 0.9em;
-            overflow-x: auto;
-        }
-
-        .hero-cta .step {
-            color: #7d8590;
-            font-size: 0.85em;
-            margin-top: 12px;
-        }
-
-        .prompt {
-            color: #484f58;
-            font-size: 0.85em;
-            margin-top: 48px;
-        }
-
-        pre {
-            color: #7d8590;
-            font-size: 0.85em;
-        }
-
-        h2 {
-            color: #e6edf3;
-            font-size: 1.3em;
-            margin-top: 40px;
-            margin-bottom: 8px;
-        }
-
-        code {
-            background: #161b22;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.9em;
-        }
-
-        .tools-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .tool {
-            padding: 8px 12px;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 4px;
-            font-size: 0.85em;
-        }
-
-        .tool strong {
-            color: #3fb950;
-        }
-    </style>
+    <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
@@ -164,7 +66,7 @@
         re-discovering architecture, re-learning project conventions. txtscape gives agents a persistent memory they
         can read and write, so knowledge accumulates instead of evaporating.</p>
 
-    <p style="color: #7d8590; font-size: 0.95em;">Pages are plain text with markdown formatting, stored in
+    <p class="text-muted">Pages are plain text with markdown formatting, stored in
         <code>.txtscape/pages/</code> in your repo. No database, no external service &mdash; just files in git.
         Searchable, diffable, reviewable in PRs.
     </p>
@@ -182,7 +84,7 @@
     └── learnings/
         └── auth-gotchas.txt</pre>
 
-    <p style="color: #7d8590; font-size: 0.95em;">
+    <p class="text-muted">
         The <code>config.json</code> file defines "concerns" &mdash; named folders with descriptions and optional
         templates. Your agent sees this taxonomy automatically and knows where to put things. Every project can
         define its own shape: a startup might have <code>customers/</code> and <code>pricing/</code>, an infra
@@ -196,8 +98,6 @@
     <p>
         <a href="https://github.com/monarchwadia/txtscape.com">source</a>
     </p>
-
-    <p class="prompt">$ _</p>
 </body>
 
 </html>

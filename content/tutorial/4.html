@@ -4,145 +4,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Expanding the World — txtscape tutorial</title>
+    <title>Deepen — txtscape tutorial</title>
     <meta name="description"
-        content="Add more rooms, items, and a character to your txtscape game world. Organize pages with concerns.">
-    <style>
-        body {
-            background: #0d1117;
-            color: #e6edf3;
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-            max-width: 640px;
-            margin: 60px auto;
-            padding: 0 24px;
-            line-height: 1.7;
-        }
-
-        a {
-            color: #3fb950;
-        }
-
-        h1 {
-            font-size: 1.8em;
-            margin-bottom: 8px;
-        }
-
-        h2 {
-            font-size: 1.2em;
-            margin-top: 40px;
-            margin-bottom: 8px;
-        }
-
-        code {
-            background: #161b22;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.9em;
-        }
-
-        pre {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 16px;
-            overflow-x: auto;
-            font-size: 0.85em;
-            line-height: 1.5;
-        }
-
-        pre code {
-            background: none;
-            padding: 0;
-        }
-
-        .nav-header {
-            font-size: 0.85em;
-            margin-bottom: 32px;
-        }
-
-        .nav-header a {
-            color: #7d8590;
-            text-decoration: none;
-        }
-
-        .nav-header a:hover {
-            color: #3fb950;
-        }
-
-        .nav-header .sep {
-            color: #30363d;
-            margin: 0 4px;
-        }
-
-        .step-num {
-            color: #3fb950;
-            font-size: 0.85em;
-            margin-bottom: 4px;
-        }
-
-        .lead {
-            color: #7d8590;
-            font-size: 0.95em;
-            margin-top: 4px;
-        }
-
-        .file-label {
-            font-size: 0.8em;
-            color: #7d8590;
-            margin-bottom: -8px;
-            margin-top: 20px;
-        }
-
-        .agent-prompt {
-            margin: 20px 0;
-            padding: 16px 20px;
-            background: #161b22;
-            border-left: 3px solid #3fb950;
-            border-radius: 0 4px 4px 0;
-            font-size: 0.9em;
-            line-height: 1.6;
-        }
-
-        .agent-prompt .label {
-            font-size: 0.8em;
-            color: #3fb950;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .callout {
-            margin: 24px 0;
-            padding: 16px 20px;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            font-size: 0.9em;
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 48px;
-            padding-top: 24px;
-            border-top: 1px solid #30363d;
-            font-size: 0.9em;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
-        }
-
-        .prompt {
-            color: #484f58;
-            font-size: 0.85em;
-            margin-top: 48px;
-        }
-    </style>
+        content="Add a characters concern and create the Minotaur and Ariadne. Apply the pattern you learned in step 2, on your own.">
+    <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
@@ -153,98 +18,80 @@
     </nav>
 
     <p class="step-num">Step 4 of 6</p>
-    <h1>Expanding the World</h1>
-    <p class="lead">One room is not much of an adventure. Let's build a world.</p>
+    <h1>Deepen</h1>
+    <p class="lead">Rooms are only half a story. Your labyrinth needs inhabitants.</p>
 
-    <h2>Add more rooms</h2>
+    <h2>Add a characters concern</h2>
+
+    <p>In step 2, you defined a rooms concern with a template. Now do the same for
+        characters. Open <code>.txtscape/config.json</code> and add a second concern:</p>
+
+    <p class="file-label">.txtscape/config.json</p>
+    <pre><code>{
+  "concerns": [
+    {
+      "folderName": "rooms",
+      "label": "Rooms",
+      "description": "Locations in the labyrinth with descriptions, exits, and items.",
+      "template": "# {name}\n\n## Description\n\n## Exits\n\n## Notable Features"
+    },
+    {
+      "folderName": "characters",
+      "label": "Characters",
+      "description": "Beings in the labyrinth with descriptions, locations, and dialogue.",
+      "template": "# {name}\n\n## Description\n\n## Location\n\n## Dialogue"
+    }
+  ]
+}</code></pre>
+
+    <h2>Create the Minotaur</h2>
 
     <div class="agent-prompt">
         <div class="label">Tell your agent</div>
-        "Create these txtscape pages:<br><br>
-        <strong>rooms/forest.txt:</strong><br>
-        The Dark Forest is thick with ancient oaks. Moonlight barely pierces the canopy.
-        Strange sounds echo between the trees. A narrow path winds deeper into the darkness.<br>
-        Exits: south leads to the Rusty Flagon. East leads to the Crystal Cave.<br>
-        Items: a torn map lies half-buried in the leaves.<br><br>
-        <strong>rooms/cave.txt:</strong><br>
-        The Crystal Cave glitters with phosphorescent minerals. Stalactites drip into
-        still pools of water. Deep in the cave, a faint blue glow pulses rhythmically.<br>
-        Exits: west leads to the Dark Forest.<br>
-        Items: a glowing gem sits on a natural stone pedestal."
+        "Create a character called The Minotaur. He's in the Minotaur's Lair. He's
+        ancient, tragic, and angry. He guards the golden hoard and speaks in riddles."
     </div>
 
-    <p>The agent calls <code>put_page</code> twice, creating two new pages in the
-        <code>rooms/</code> folder. Your game world now has three connected locations:
-    </p>
+    <p>The agent creates <code>characters/minotaur.txt</code> following your characters
+        template &mdash; <code>## Description</code>, <code>## Location</code>,
+        <code>## Dialogue</code>.</p>
 
-    <pre><code>Tavern --north--&gt; Forest --east--&gt; Cave</code></pre>
-
-    <h2>Add a character</h2>
+    <h2>Create Ariadne</h2>
 
     <div class="agent-prompt">
         <div class="label">Tell your agent</div>
-        "Create a txtscape page at <strong>characters/bartender.txt:</strong><br><br>
-        Grimjaw is the bartender at the Rusty Flagon. He's seen everything and trusts
-        no one. He has a gravelly voice and a scar across his left eye.<br><br>
-        Dialogue: 'Careful in those woods, stranger. People go in. Not all of 'em come back.'<br><br>
-        Knows about: the Crystal Cave, the glowing gem, and an old legend about the
-        Eldorian kings."
+        "Create a character called Ariadne. She's in Ariadne's Chamber.
+        She offers the player a ball of thread and warns them about the Minotaur."
     </div>
 
-    <p>Notice the folder structure that's forming:</p>
+    <p>Your project now has two kinds of knowledge, each in its own folder:</p>
 
     <pre><code>.txtscape/pages/
 ├── rooms/
-│   ├── tavern.txt
-│   ├── forest.txt
-│   └── cave.txt
+│   ├── ariadnes-chamber.txt
+│   ├── entrance-hall.txt
+│   ├── minotaurs-lair.txt
+│   ├── twisting-corridors.txt
+│   └── underground-pool.txt
 └── characters/
-    └── bartender.txt</code></pre>
+    ├── ariadne.txt
+    └── minotaur.txt</code></pre>
 
-    <p>Rooms in one folder, characters in another. The organization is natural &mdash;
-        you chose folder names that match your domain. txtscape doesn't enforce a structure;
-        you shape it to fit your project.</p>
-
-    <h2>Regenerate the game</h2>
-
-    <p>Now ask the agent to rebuild the game using <em>all</em> the knowledge:</p>
-
-    <div class="agent-prompt">
-        <div class="label">Tell your agent</div>
-        "Use txtscape's snapshot tool to read all pages at once. Then update index.html
-        with all three rooms connected by their exits, the bartender NPC with a talk button
-        that shows his dialogue, and an inventory system so the player can pick up and
-        carry items."
-    </div>
-
-    <p>The agent calls <code>snapshot</code> &mdash; a single tool call that loads every
-        page. It now has full context: three rooms with their connections, a character with
-        dialogue, and items scattered across locations.</p>
-
-    <p>Open <code>index.html</code>. You should be able to:</p>
-
-    <ul>
-        <li>Walk from the tavern to the forest to the cave and back</li>
-        <li>Pick up items &mdash; the rusty sword, torn map, glowing gem</li>
-        <li>Talk to Grimjaw and hear his warning</li>
-    </ul>
-
-    <p>All of it came from your txtscape pages. The agent read plain text and produced
-        a working game.</p>
+    <p>Notice what you did: you followed the same pattern from step 2 &mdash; define a
+        concern, give it a template, ask the agent to create content. The agent shaped its
+        output to match, both times.</p>
 
     <div class="callout">
-        <strong>Snapshot vs. individual reads:</strong> <code>snapshot</code> loads all
-        pages in one call &mdash; efficient when the agent needs full context.
-        <code>get_page</code> reads one page at a time &mdash; better for targeted lookups.
-        The agent will pick the right tool based on what you ask.
+        <strong>The training wheels are off.</strong> You added this concern yourself. Nobody
+        told you the exact JSON or the template fields &mdash; you adapted the pattern.
+        That's how txtscape works in real projects: you design the shape, then keep
+        using it.
     </div>
 
     <div class="nav-links">
-        <a href="/tutorial/3">&larr; Summoning Code</a>
-        <a href="/tutorial/5">The Living World &rarr;</a>
+        <a href="/tutorial/3">&larr; Populate</a>
+        <a href="/tutorial/5">Build &rarr;</a>
     </div>
-
-    <p class="prompt">$ _</p>
 </body>
 
 </html>

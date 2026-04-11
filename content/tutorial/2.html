@@ -4,145 +4,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Your First Room — txtscape tutorial</title>
+    <title>Define — txtscape tutorial</title>
     <meta name="description"
-        content="Create your first txtscape page — a tavern in the game world. Store knowledge the AI agent can read and use.">
-    <style>
-        body {
-            background: #0d1117;
-            color: #e6edf3;
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-            max-width: 640px;
-            margin: 60px auto;
-            padding: 0 24px;
-            line-height: 1.7;
-        }
-
-        a {
-            color: #3fb950;
-        }
-
-        h1 {
-            font-size: 1.8em;
-            margin-bottom: 8px;
-        }
-
-        h2 {
-            font-size: 1.2em;
-            margin-top: 40px;
-            margin-bottom: 8px;
-        }
-
-        code {
-            background: #161b22;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.9em;
-        }
-
-        pre {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 16px;
-            overflow-x: auto;
-            font-size: 0.85em;
-            line-height: 1.5;
-        }
-
-        pre code {
-            background: none;
-            padding: 0;
-        }
-
-        .nav-header {
-            font-size: 0.85em;
-            margin-bottom: 32px;
-        }
-
-        .nav-header a {
-            color: #7d8590;
-            text-decoration: none;
-        }
-
-        .nav-header a:hover {
-            color: #3fb950;
-        }
-
-        .nav-header .sep {
-            color: #30363d;
-            margin: 0 4px;
-        }
-
-        .step-num {
-            color: #3fb950;
-            font-size: 0.85em;
-            margin-bottom: 4px;
-        }
-
-        .lead {
-            color: #7d8590;
-            font-size: 0.95em;
-            margin-top: 4px;
-        }
-
-        .file-label {
-            font-size: 0.8em;
-            color: #7d8590;
-            margin-bottom: -8px;
-            margin-top: 20px;
-        }
-
-        .agent-prompt {
-            margin: 20px 0;
-            padding: 16px 20px;
-            background: #161b22;
-            border-left: 3px solid #3fb950;
-            border-radius: 0 4px 4px 0;
-            font-size: 0.9em;
-            line-height: 1.6;
-        }
-
-        .agent-prompt .label {
-            font-size: 0.8em;
-            color: #3fb950;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .callout {
-            margin: 24px 0;
-            padding: 16px 20px;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            font-size: 0.9em;
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 48px;
-            padding-top: 24px;
-            border-top: 1px solid #30363d;
-            font-size: 0.9em;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
-        }
-
-        .prompt {
-            color: #484f58;
-            font-size: 0.85em;
-            margin-top: 48px;
-        }
-    </style>
+        content="Define a rooms concern with a template, then ask the agent to create your first room. The template shapes the output.">
+    <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
@@ -153,73 +18,84 @@
     </nav>
 
     <p class="step-num">Step 2 of 6</p>
-    <h1>Your First Room</h1>
-    <p class="lead">Describe a tavern in plain text. Your agent will remember it forever.</p>
+    <h1>Define</h1>
+    <p class="lead">Design the shape of your world before writing a single room.</p>
 
-    <h2>Create a page</h2>
+    <h2>Create the config</h2>
 
-    <p>You're going to describe the starting location of your game. Not in code &mdash;
-        in a txtscape page. Open your AI chat and say:</p>
+    <p>Before creating any content, you'll tell txtscape what kind of knowledge this project holds.
+        Create <code>.txtscape/config.json</code> in your project:</p>
 
-    <div class="agent-prompt">
-        <div class="label">Tell your agent</div>
-        "Create a txtscape page at <strong>rooms/tavern.txt</strong> with this content:<br><br>
-        The Rusty Flagon is a dimly lit tavern. Candles flicker on rough wooden tables.
-        A grizzled bartender polishes a cracked mug behind the counter. The air smells
-        of ale and smoke.<br><br>
-        Exits: north leads to the Dark Forest.<br><br>
-        Items: a rusty sword hangs on the wall behind the bar."
-    </div>
+    <p class="file-label">.txtscape/config.json</p>
+    <pre><code>{
+  "concerns": [
+    {
+      "folderName": "rooms",
+      "label": "Rooms",
+      "description": "Locations in the labyrinth with descriptions, exits, and items.",
+      "template": "# {name}\n\n## Description\n\n## Exits\n\n## Notable Features"
+    }
+  ]
+}</code></pre>
 
-    <p>The agent calls the <code>put_page</code> tool and creates a file at
-        <code>.txtscape/pages/rooms/tavern.txt</code>. You can open it in your editor &mdash;
-        it's just a text file:
-    </p>
+    <p>This tells the agent: "this project has a <code>rooms/</code> folder, and every
+        room should follow this template." You haven't created any rooms yet &mdash; you've
+        defined what a room <em>looks like</em>.</p>
 
-    <p class="file-label">.txtscape/pages/rooms/tavern.txt</p>
-    <pre><code>The Rusty Flagon is a dimly lit tavern. Candles flicker
-on rough wooden tables. A grizzled bartender polishes a
-cracked mug behind the counter. The air smells of ale
-and smoke.
+    <h2>Create your first room</h2>
 
-Exits: north leads to the Dark Forest.
-
-Items: a rusty sword hangs on the wall behind the bar.</code></pre>
-
-    <h2>Read it back</h2>
-
-    <p>Now verify your agent can access the page:</p>
+    <p>Now ask the agent to create a room. Don't dictate the content &mdash; just name it:</p>
 
     <div class="agent-prompt">
         <div class="label">Tell your agent</div>
-        "Read the rooms/tavern page from txtscape."
+        "Create a room called The Entrance Hall. It's the threshold of the Minotaur's
+        labyrinth on Crete &mdash; sunlight behind, darkness ahead. There's a bronze
+        sword on the wall."
     </div>
 
-    <p>The agent calls <code>get_page</code> and reads the tavern description back to you.
-        Same content, retrieved from your project's persistent memory.</p>
+    <p>Watch what happens. The agent calls <code>put_page</code> and creates
+        <code>rooms/entrance-hall.txt</code> &mdash; and the content follows your template:</p>
+
+    <p class="file-label">.txtscape/pages/rooms/entrance-hall.txt</p>
+    <pre><code># The Entrance Hall
+
+## Description
+A wide stone archway marks the threshold between the
+sunlit world and the labyrinth below. Dust motes drift
+in the last shaft of daylight. Beyond the arch, rough
+walls close in and the air grows cold.
+
+## Exits
+- North: Twisting Corridors
+
+## Notable Features
+- A bronze sword hangs on an iron bracket by the entrance</code></pre>
+
+    <p>The exact words will differ &mdash; your agent writes its own prose. But the
+        structure matches: <code># Name</code>, <code>## Description</code>,
+        <code>## Exits</code>, <code>## Notable Features</code>. That came from
+        your template.</p>
 
     <h2>What just happened</h2>
 
-    <p>You stored game knowledge <em>outside your code</em>. This page lives in your repo
-        as a plain <code>.txt</code> file. It persists across conversations. Tomorrow, next
-        week, a month from now &mdash; when any AI agent opens this project, the tavern is
-        still there.</p>
+    <p>You defined a concern with a template. The agent used it automatically.
+        You didn't paste the template into the chat or tell the agent to follow a format &mdash;
+        it read the config and shaped its output to match.</p>
 
-    <p>This is the core idea: <strong>txtscape is persistent memory for your AI agent.</strong>
-        Knowledge goes in as pages. The agent reads them whenever it needs context.</p>
+    <p>This is the core pattern: <strong>you design the structure, the agent fills it in.</strong>
+        The template is your lever. Change the template, and every room the agent creates
+        will follow the new shape.</p>
 
     <div class="callout">
-        You could have created the file manually in your editor instead of asking the agent.
-        txtscape pages are just files &mdash; there's nothing magical about how they're created.
-        The agent uses MCP tools, but you can always edit them directly.
+        You can open <code>.txtscape/pages/rooms/entrance-hall.txt</code> in your
+        editor &mdash; it's a plain text file. Edit it anytime. Pages belong to you, not
+        to the agent.
     </div>
 
     <div class="nav-links">
-        <a href="/tutorial/1">&larr; Setup</a>
-        <a href="/tutorial/3">Summoning Code &rarr;</a>
+        <a href="/tutorial/1">&larr; Install</a>
+        <a href="/tutorial/3">Populate &rarr;</a>
     </div>
-
-    <p class="prompt">$ _</p>
 </body>
 
 </html>

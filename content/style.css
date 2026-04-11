@@ -1,0 +1,327 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+:root {
+    --bg: #f0f5ec;
+    --bg-card: #ffffff;
+    --bg-code: #e8ede3;
+    --bg-callout: #e0ecda;
+    --bg-prompt: #e2f0e4;
+
+    --text: #2e3d2e;
+    --text-heading: #1a472a;
+    --text-muted: #5c7a5c;
+    --text-light: #7a9a7a;
+
+    --green: #2d8a4e;
+    --green-dark: #1e6b3a;
+    --coral: #f06040;
+    --gold: #e8a020;
+
+    --border: #c8d5be;
+    --border-light: #d8e2d0;
+
+    --shadow: 0 2px 8px rgba(30, 60, 30, 0.06);
+    --shadow-hover: 0 4px 16px rgba(30, 60, 30, 0.10);
+    --radius: 12px;
+    --radius-sm: 8px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 17px;
+    max-width: 720px;
+    margin: 60px auto;
+    padding: 0 24px;
+    line-height: 1.8;
+}
+
+a {
+    color: var(--green);
+    text-decoration-color: var(--border);
+    text-underline-offset: 3px;
+    transition: color 0.15s;
+}
+
+a:hover {
+    color: var(--green-dark);
+    text-decoration-color: var(--green);
+}
+
+h1 {
+    font-size: 2.2em;
+    font-weight: 800;
+    color: var(--text-heading);
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+h2 {
+    font-size: 1.3em;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin-top: 48px;
+    margin-bottom: 12px;
+}
+
+code {
+    background: var(--bg-code);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    font-size: 0.88em;
+    color: var(--green-dark);
+}
+
+pre {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    overflow-x: auto;
+    font-size: 0.88em;
+    line-height: 1.6;
+    box-shadow: var(--shadow);
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    color: var(--text);
+}
+
+/* Navigation */
+
+.nav-header {
+    font-size: 0.9em;
+    margin-bottom: 40px;
+}
+
+.nav-header a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.nav-header a:hover {
+    color: var(--green);
+}
+
+.nav-header .sep {
+    color: var(--border);
+    margin: 0 6px;
+}
+
+/* Homepage */
+
+.tagline {
+    color: var(--text-muted);
+    font-size: 1.15em;
+    margin-top: 8px;
+}
+
+.text-muted {
+    color: var(--text-muted);
+    font-size: 0.95em;
+}
+
+.hero-cta {
+    margin-top: 36px;
+    padding: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.hero-cta p {
+    margin: 0 0 12px;
+}
+
+.hero-cta pre {
+    margin: 0;
+    padding: 14px 16px;
+    background: var(--bg-code);
+    border: none;
+    box-shadow: none;
+    color: var(--green-dark);
+}
+
+.hero-cta .step {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    margin-top: 12px;
+}
+
+.tools-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.tool {
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    font-size: 0.88em;
+    box-shadow: var(--shadow);
+}
+
+.tool strong {
+    color: var(--green);
+}
+
+/* Tutorial index */
+
+.steps-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 24px;
+}
+
+.steps-list li {
+    margin: 10px 0;
+}
+
+.steps-list a {
+    display: block;
+    padding: 16px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--text);
+    font-size: 0.95em;
+    box-shadow: var(--shadow);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.steps-list a:hover {
+    border-color: var(--green);
+    box-shadow: var(--shadow-hover);
+}
+
+.steps-list .num {
+    color: var(--coral);
+    font-weight: 700;
+    margin-right: 8px;
+}
+
+.prereqs {
+    color: var(--text-muted);
+    font-size: 0.95em;
+}
+
+.prereqs strong {
+    color: var(--text-heading);
+}
+
+/* Tutorial steps */
+
+.step-num {
+    display: inline-block;
+    color: var(--coral);
+    font-size: 0.85em;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: 0.02em;
+}
+
+.lead {
+    color: var(--text-muted);
+    font-size: 1.05em;
+    margin-top: 4px;
+}
+
+.file-label {
+    font-size: 0.82em;
+    color: var(--text-light);
+    margin-bottom: -8px;
+    margin-top: 24px;
+    font-weight: 600;
+}
+
+.agent-prompt {
+    margin: 24px 0;
+    padding: 20px 24px;
+    background: var(--bg-prompt);
+    border-left: 4px solid var(--green);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 0.95em;
+    line-height: 1.7;
+}
+
+.agent-prompt .label {
+    font-size: 0.78em;
+    color: var(--green);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+}
+
+.callout {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-callout);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.95em;
+}
+
+.callout strong {
+    color: var(--text-heading);
+}
+
+.nav-links {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 0.95em;
+}
+
+.nav-links a {
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.nav-links a:hover {
+    text-decoration: underline;
+}
+
+/* Lists */
+
+ul, ol {
+    padding-left: 24px;
+}
+
+li {
+    margin: 6px 0;
+}
+
+/* Responsive */
+
+@media (max-width: 600px) {
+    body {
+        margin: 32px auto;
+        padding: 0 16px;
+        font-size: 16px;
+    }
+
+    h1 {
+        font-size: 1.8em;
+    }
+
+    .tools-grid {
+        grid-template-columns: 1fr;
+    }
+}

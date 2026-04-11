@@ -6,114 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tutorial — txtscape</title>
     <meta name="description"
-        content="Build a text adventure game with an AI agent that remembers your game world. Learn how txtscape gives AI agents persistent, structured memory.">
-    <style>
-        body {
-            background: #0d1117;
-            color: #e6edf3;
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-            max-width: 640px;
-            margin: 60px auto;
-            padding: 0 24px;
-            line-height: 1.7;
-        }
-
-        a {
-            color: #3fb950;
-        }
-
-        h1 {
-            font-size: 1.8em;
-            margin-bottom: 8px;
-        }
-
-        h2 {
-            font-size: 1.2em;
-            margin-top: 40px;
-            margin-bottom: 8px;
-        }
-
-        .nav-header {
-            font-size: 0.85em;
-            margin-bottom: 32px;
-        }
-
-        .nav-header a {
-            color: #7d8590;
-            text-decoration: none;
-        }
-
-        .nav-header a:hover {
-            color: #3fb950;
-        }
-
-        .lead {
-            color: #7d8590;
-            font-size: 0.95em;
-            margin-top: 4px;
-        }
-
-        .callout {
-            margin: 24px 0;
-            padding: 16px 20px;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            font-size: 0.9em;
-        }
-
-        .steps-list {
-            list-style: none;
-            padding: 0;
-            margin-top: 24px;
-        }
-
-        .steps-list li {
-            margin: 8px 0;
-        }
-
-        .steps-list a {
-            display: block;
-            padding: 12px 16px;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            text-decoration: none;
-            color: #e6edf3;
-            font-size: 0.9em;
-        }
-
-        .steps-list a:hover {
-            border-color: #3fb950;
-        }
-
-        .steps-list .num {
-            color: #3fb950;
-            margin-right: 8px;
-        }
-
-        .prereqs {
-            color: #7d8590;
-            font-size: 0.9em;
-        }
-
-        .prereqs strong {
-            color: #e6edf3;
-        }
-
-        code {
-            background: #161b22;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.9em;
-        }
-
-        .prompt {
-            color: #484f58;
-            font-size: 0.85em;
-            margin-top: 48px;
-        }
-    </style>
+        content="Build a text adventure set in the Minotaur's Labyrinth. Learn how txtscape gives your AI agent persistent, structured memory.">
+    <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
@@ -130,20 +24,20 @@
 
     <p>What if your agent could remember?</p>
 
-    <p>In this tutorial, you'll build <strong>Shadows of Eldoria</strong> &mdash; a text adventure
-        game in a single <code>index.html</code> file. But you won't write the game yourself.
-        You'll describe your game world in txtscape &mdash; rooms, items, characters &mdash; and
-        your AI agent will build the game from that knowledge.</p>
+    <p>In this tutorial, you'll build a text adventure set in the <strong>Minotaur's
+        Labyrinth</strong> &mdash; a playable game in a single HTML file. But you won't write
+        the game yourself. You'll describe your world in txtscape &mdash; rooms, characters,
+        connections &mdash; and your AI agent will build the game from that knowledge.</p>
 
-    <h2>What you'll learn</h2>
+    <h2>What you'll do</h2>
 
     <ul>
-        <li>How to install and configure txtscape</li>
-        <li>How to store structured knowledge in pages</li>
-        <li>How the AI reads your pages to generate consistent code</li>
-        <li>How to organize pages into folders for different concerns</li>
-        <li>What happens when you change a page and regenerate &mdash; the AI adapts</li>
-        <li>How to search and cross-reference your project memory</li>
+        <li>Install txtscape and connect it to your AI agent</li>
+        <li>Define a concern with a template that shapes agent output</li>
+        <li>Direct the agent to populate an entire game world</li>
+        <li>Add a second concern on your own, by analogy</li>
+        <li>Generate a playable HTML game from your pages</li>
+        <li>Edit a room and see the game change to match</li>
     </ul>
 
     <div class="callout prereqs">
@@ -154,19 +48,17 @@
     <h2>Steps</h2>
 
     <ul class="steps-list">
-        <li><a href="/tutorial/1"><span class="num">1.</span> Setup &mdash; install txtscape and create your project</a>
+        <li><a href="/tutorial/1"><span class="num">1.</span> Install &mdash; set up txtscape and verify it works</a>
         </li>
-        <li><a href="/tutorial/2"><span class="num">2.</span> Your First Room &mdash; describe a tavern in txtscape</a>
+        <li><a href="/tutorial/2"><span class="num">2.</span> Define &mdash; create a rooms concern with a template</a>
         </li>
-        <li><a href="/tutorial/3"><span class="num">3.</span> Summoning Code &mdash; the AI builds your game</a></li>
-        <li><a href="/tutorial/4"><span class="num">4.</span> Expanding the World &mdash; rooms, items, characters</a>
+        <li><a href="/tutorial/3"><span class="num">3.</span> Populate &mdash; fill the labyrinth with rooms</a></li>
+        <li><a href="/tutorial/4"><span class="num">4.</span> Deepen &mdash; add characters on your own</a>
         </li>
-        <li><a href="/tutorial/5"><span class="num">5.</span> The Living World &mdash; change a page, code adapts</a>
+        <li><a href="/tutorial/5"><span class="num">5.</span> Build &mdash; generate a playable game</a>
         </li>
-        <li><a href="/tutorial/6"><span class="num">6.</span> Mastery &mdash; search, history, what's next</a></li>
+        <li><a href="/tutorial/6"><span class="num">6.</span> Revise &mdash; change a room, rebuild, see the difference</a></li>
     </ul>
-
-    <p class="prompt">$ _</p>
 </body>
 
 </html>

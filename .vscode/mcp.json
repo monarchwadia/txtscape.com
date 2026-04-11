@@ -5,6 +5,12 @@
       "command": "npx",
       "args": ["-y", "@txtscape/mcp@latest"],
       "cwd": "${workspaceFolder}"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
     }
   }
 }

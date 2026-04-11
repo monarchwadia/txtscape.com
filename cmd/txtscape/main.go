@@ -18,6 +18,10 @@ func main() {
 		http.ServeFile(w, r, "content/index.html")
 	})
 
+	mux.HandleFunc("GET /style.css", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "content/style.css")
+	})
+
 	mux.HandleFunc("GET /tutorial", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "content/tutorial/index.html")
 	})
