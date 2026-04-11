@@ -2,7 +2,7 @@
   "servers": {
     "txtscape": {
       "type": "stdio",
-      "command": "${workspaceFolder}/bin/txtscape-mcp",
+      "command": "txtscape-mcp",
       "cwd": "${workspaceFolder}"
     }
   }

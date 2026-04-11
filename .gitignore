@@ -1,5 +1,5 @@
 txtscape
-bin/
+/bin/
 txtscape-mcp/npm/txtscape-mcp/bin/txtscape-mcp-*
 
 # If you prefer the allow list template instead of the deny list, see community template:

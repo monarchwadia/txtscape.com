@@ -2490,3 +2490,182 @@ func TestInitialize_EmptyConcernsArray_StaticInstructions(t *testing.T) {
 		t.Errorf("should not mention concerns when array is empty")
 	}
 }
+
+// --- Folder warning tests ---
+
+func setupTestServerWithConcerns(t *testing.T, concerns []map[string]string) *server {
+	t.Helper()
+	s := setupTestServer(t)
+	configDir := filepath.Join(s.root, ".txtscape")
+	config := map[string]any{"concerns": concerns}
+	data, _ := json.Marshal(config)
+	os.WriteFile(filepath.Join(configDir, "config.json"), data, 0o644)
+	return s
+}
+
+func TestPutPage_UnknownFolder_WarnsConcernMismatch(t *testing.T) {
+	// Business context: When an LLM writes to a folder not in config.json, the
+	// response should warn so the LLM can self-correct rather than silently
+	// creating pages in hallucinated folders.
+	// Scenario: Config has "decisions" concern; put_page writes to "bogus/test.txt".
+	// Expected: Success with warning mentioning "bogus" is not a configured concern.
+	s := setupTestServerWithConcerns(t, []map[string]string{
+		{"folderName": "decisions", "label": "Decisions", "description": "Architectural decisions"},
+	})
+
+	resp := callTool(s, "put_page", map[string]string{
+		"path": "bogus/test.txt", "content": "hello",
+	})
+	if isToolError(resp) {
+		t.Fatal("expected success, got error")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "warning") {
+		t.Errorf("expected warning in response, got: %s", text)
+	}
+	if !strings.Contains(text, "bogus") {
+		t.Errorf("expected warning to mention folder name 'bogus', got: %s", text)
+	}
+}
+
+func TestPutPage_KnownFolder_NoWarning(t *testing.T) {
+	// Business context: Pages in configured concern folders should not trigger warnings.
+	// Scenario: Config has "decisions" concern; put_page writes to "decisions/test.txt".
+	// Expected: Success with no warning.
+	s := setupTestServerWithConcerns(t, []map[string]string{
+		{"folderName": "decisions", "label": "Decisions", "description": "Architectural decisions"},
+	})
+
+	resp := callTool(s, "put_page", map[string]string{
+		"path": "decisions/test.txt", "content": "hello",
+	})
+	text := getTextContent(t, resp)
+	if strings.Contains(text, "warning") {
+		t.Errorf("unexpected warning for known folder: %s", text)
+	}
+}
+
+func TestPutPage_RootLevel_NoWarning(t *testing.T) {
+	// Business context: Pages at the root level (no folder) are allowed as
+	// ad-hoc notes and should not trigger warnings.
+	// Scenario: Config has concerns; put_page writes to "notes.txt" (no folder).
+	// Expected: Success with no warning.
+	s := setupTestServerWithConcerns(t, []map[string]string{
+		{"folderName": "decisions", "label": "Decisions", "description": "Architectural decisions"},
+	})
+
+	resp := callTool(s, "put_page", map[string]string{
+		"path": "notes.txt", "content": "hello",
+	})
+	text := getTextContent(t, resp)
+	if strings.Contains(text, "warning") {
+		t.Errorf("unexpected warning for root-level page: %s", text)
+	}
+}
+
+func TestPutPage_NoConcernsConfig_NoWarning(t *testing.T) {
+	// Business context: Projects without config.json should not see warnings.
+	// Scenario: No config.json exists; put_page writes to "anything/test.txt".
+	// Expected: Success with no warning.
+	s := setupTestServer(t)
+
+	resp := callTool(s, "put_page", map[string]string{
+		"path": "anything/test.txt", "content": "hello",
+	})
+	text := getTextContent(t, resp)
+	if strings.Contains(text, "warning") {
+		t.Errorf("unexpected warning without config: %s", text)
+	}
+}
+
+func TestAppendPage_UnknownFolder_WarnsConcernMismatch(t *testing.T) {
+	// Business context: The warning should appear on all write operations, not just put_page.
+	// Scenario: append_page to an unknown folder.
+	// Expected: Success with warning.
+	s := setupTestServerWithConcerns(t, []map[string]string{
+		{"folderName": "decisions", "label": "Decisions", "description": "Architectural decisions"},
+	})
+
+	resp := callTool(s, "append_page", map[string]string{
+		"path": "bogus/test.txt", "content": "hello",
+	})
+	if isToolError(resp) {
+		t.Fatal("expected success, got error")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "warning") {
+		t.Errorf("expected warning in append response, got: %s", text)
+	}
+}
+
+func TestMovePage_UnknownDestFolder_WarnsConcernMismatch(t *testing.T) {
+	// Business context: Moving a page to an unknown folder should warn,
+	// since the destination is where the page will live.
+	// Scenario: Move from known folder to unknown folder.
+	// Expected: Success with warning about destination folder.
+	s := setupTestServerWithConcerns(t, []map[string]string{
+		{"folderName": "decisions", "label": "Decisions", "description": "Architectural decisions"},
+	})
+
+	// Create source page in a known folder
+	callTool(s, "put_page", map[string]string{
+		"path": "decisions/original.txt", "content": "hello",
+	})
+
+	resp := callTool(s, "move_page", map[string]string{
+		"path": "decisions/original.txt", "new_path": "bogus/moved.txt",
+	})
+	if isToolError(resp) {
+		t.Fatal("expected success, got error")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "warning") {
+		t.Errorf("expected warning for unknown destination folder, got: %s", text)
+	}
+}
+
+func TestStrReplacePage_UnknownFolder_WarnsConcernMismatch(t *testing.T) {
+	// Business context: str_replace_page is a write operation and should also warn.
+	// Scenario: Replace in a page in an unknown folder.
+	// Expected: Success with warning.
+	s := setupTestServerWithConcerns(t, []map[string]string{
+		{"folderName": "decisions", "label": "Decisions", "description": "Architectural decisions"},
+	})
+
+	callTool(s, "put_page", map[string]string{
+		"path": "bogus/test.txt", "content": "old text here",
+	})
+
+	resp := callTool(s, "str_replace_page", map[string]string{
+		"path": "bogus/test.txt", "old_str": "old text", "new_str": "new text",
+	})
+	if isToolError(resp) {
+		t.Fatal("expected success, got error")
+	}
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "warning") {
+		t.Errorf("expected warning in str_replace response, got: %s", text)
+	}
+}
+
+func TestPutPage_UnknownFolder_WarningListsKnownConcerns(t *testing.T) {
+	// Business context: The warning should list known concerns so the LLM
+	// can pick the right one.
+	// Scenario: Config has "decisions" and "learnings"; write to "bogus/".
+	// Expected: Warning mentions both "decisions/" and "learnings/".
+	s := setupTestServerWithConcerns(t, []map[string]string{
+		{"folderName": "decisions", "label": "Decisions", "description": "d"},
+		{"folderName": "learnings", "label": "Learnings", "description": "l"},
+	})
+
+	resp := callTool(s, "put_page", map[string]string{
+		"path": "bogus/test.txt", "content": "hello",
+	})
+	text := getTextContent(t, resp)
+	if !strings.Contains(text, "decisions/") {
+		t.Errorf("warning should mention 'decisions/', got: %s", text)
+	}
+	if !strings.Contains(text, "learnings/") {
+		t.Errorf("warning should mention 'learnings/', got: %s", text)
+	}
+}
