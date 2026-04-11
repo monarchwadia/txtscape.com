@@ -197,7 +197,7 @@ func (s *server) handleRequest(req jsonrpcRequest) jsonrpcResponse {
 				},
 				"serverInfo": map[string]any{
 					"name":    "txtscape",
-					"version": "0.1.0",
+					"version": "0.0.1",
 				},
 				"instructions": s.buildInstructions(),
 			},

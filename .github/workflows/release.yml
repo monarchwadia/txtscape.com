@@ -56,11 +56,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
+          node-version: '24'
           registry-url: https://registry.npmjs.org
 
       - name: Download all binaries
@@ -77,10 +79,14 @@ jobs:
         with:
           files: txtscape-mcp/npm/txtscape-mcp/bin/txtscape-mcp-*
 
+      # NOTE: First-time publish only:
+      #   1. Temporarily add NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} to this step
+      #      and publish once to create @txtscape/mcp on npmjs.com.
+      #   2. On npmjs.com → @txtscape/mcp → Settings → Trusted Publisher,
+      #      set: owner=txtscape, repo=txtscape.com, workflow=release.yml
+      #   3. Remove NODE_AUTH_TOKEN and revoke the token. All future releases use OIDC.
       - name: Publish to npm
         working-directory: txtscape-mcp/npm/txtscape-mcp
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm version --no-git-tag-version "${GITHUB_REF_NAME#v}"
           npm publish --access public
