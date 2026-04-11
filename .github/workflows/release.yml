@@ -106,6 +106,10 @@ jobs:
           name: npm-package
           path: npm/
 
+      - name: Set executable bits
+        if: runner.os != 'Windows'
+        run: chmod +x npm/txtscape-mcp/bin/txtscape-mcp-*
+
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -133,6 +137,9 @@ jobs:
         with:
           name: npm-package
           path: txtscape-mcp/npm/
+
+      - name: Set executable bits
+        run: chmod +x txtscape-mcp/npm/txtscape-mcp/bin/txtscape-mcp-*
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2

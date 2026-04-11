@@ -3,7 +3,7 @@
     "txtscape": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@txtscape/mcp"],
+      "args": ["-y", "@txtscape/mcp@latest"],
       "cwd": "${workspaceFolder}"
     }
   }
