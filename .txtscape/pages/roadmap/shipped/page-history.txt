@@ -1,3 +1,0 @@
-# Page History via Git
-
-Show git commit history for any page, with optional diffs. Lets agents understand how a decision evolved over time.

@@ -1,3 +1,0 @@
-# Kanban Board MCP Tools
-
-Add kanban_board and kanban_move MCP tools so agents can view and manage kanban-style concerns directly.

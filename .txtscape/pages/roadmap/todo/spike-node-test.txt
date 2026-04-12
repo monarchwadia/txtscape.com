@@ -1,0 +1,3 @@
+# Spike: Test Scripts with node:test
+
+Explore whether any of the frontend JS can be unit tested with node:test (Node's built-in test runner). This is a spike — evaluate feasibility, not a commitment. Zero dependency constraint means no Jest, Vitest, etc.

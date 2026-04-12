@@ -34,7 +34,8 @@
         {
             "folderName": "roadmap",
             "label": "Roadmap",
-            "description": "Product roadmap tracked as a kanban board. Each subfolder is a swimlane. First folder is backlog (not started), last is shipped (completed)."
+            "description": "Product roadmap tracked as a kanban board.",
+            "swimlanes": ["todo", "in-progress", "done"]
         }
     ]
 }

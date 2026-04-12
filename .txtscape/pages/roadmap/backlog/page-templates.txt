@@ -1,3 +1,0 @@
-# Page Templates on Create
-
-When put_page creates a new page inside a concern folder that has a template configured, auto-populate the page with the template content if the user provides empty content.

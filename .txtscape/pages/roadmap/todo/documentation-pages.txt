@@ -1,0 +1,3 @@
+# Create Extensive Documentation Pages
+
+Write accurate, comprehensive documentation for the website covering: UI subcommand usage, all views (dashboard, explore, kanban, page viewer), search, activity feed, SSE live updates, config options, and kanban auto-detection logic.

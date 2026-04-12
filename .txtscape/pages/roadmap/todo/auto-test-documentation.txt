@@ -1,0 +1,3 @@
+# Automatic Documentation Testing
+
+Figure out a way for agents to automatically test that documentation is accurate. Could involve: running documented commands and verifying output, Playwright-based screenshot comparison, or agent-driven walkthrough that follows tutorial steps and asserts expected results.

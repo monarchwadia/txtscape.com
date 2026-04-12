@@ -1,0 +1,3 @@
+# Clean Up UI Code Into Multiple Scripts
+
+Split app.js into smaller focused scripts (routing, rendering, search, activity, kanban, markdown, etc). Keep zero dependencies — no bundler, no framework, no build step. Use plain script tags or a lightweight module pattern.

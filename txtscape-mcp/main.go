@@ -56,10 +56,11 @@ const (
 // --- Concerns config ---
 
 type concern struct {
-	FolderName  string `json:"folderName"`
-	Label       string `json:"label"`
-	Description string `json:"description"`
-	Template    string `json:"template,omitempty"`
+	FolderName  string   `json:"folderName"`
+	Label       string   `json:"label"`
+	Description string   `json:"description"`
+	Template    string   `json:"template,omitempty"`
+	Swimlanes   []string `json:"swimlanes,omitempty"`
 }
 
 type txtscapeConfig struct {

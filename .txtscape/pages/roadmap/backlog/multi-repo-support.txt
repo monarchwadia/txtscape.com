@@ -1,3 +1,0 @@
-# Multi-Repo Support
-
-Allow txtscape to aggregate pages from multiple repos into a single view. Useful for monorepos and organizations.

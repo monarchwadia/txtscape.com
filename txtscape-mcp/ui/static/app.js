@@ -167,6 +167,17 @@
     function computeKanban(concern, folder) {
         var cols = (folder.children || []).filter(function (c) { return c.isDir; });
         if (cols.length < 2) return null;
+        // If swimlanes are configured, sort columns to match that order
+        if (concern.swimlanes && concern.swimlanes.length > 0) {
+            var order = concern.swimlanes;
+            cols.sort(function (a, b) {
+                var ai = order.indexOf(a.name);
+                var bi = order.indexOf(b.name);
+                if (ai === -1) ai = 9999;
+                if (bi === -1) bi = 9999;
+                return ai - bi;
+            });
+        }
         var total = 0;
         var notStarted = 0, completed = 0, inProgress = 0;
         cols.forEach(function (col, i) {

@@ -1,3 +1,0 @@
-# SPA UI
-
-Browser-based readonly viewer for the knowledge base. Dashboard, explore view with kanban boards, activity feed, search, SSE live reload.

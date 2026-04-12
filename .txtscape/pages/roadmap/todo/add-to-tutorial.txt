@@ -1,0 +1,3 @@
+# Add UI to Tutorial
+
+Add the `ui` subcommand to the txtscape tutorial. Cover starting the server, navigating the dashboard, exploring pages, using the kanban board view, search, and activity feed.
