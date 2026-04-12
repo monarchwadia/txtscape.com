@@ -60,11 +60,26 @@
     <p>Five rooms, all in the <code>rooms/</code> folder, all following the same template.
         The labyrinth has a shape.</p>
 
-    <div class="callout">
-        <strong>Try this:</strong> Start a new chat session (close and reopen the AI chat).
-        Ask the agent "What rooms exist in this labyrinth?" &mdash; it can call
-        <code>list_pages</code> and find everything, without you re-explaining anything.
-        That's persistent memory at work.
+    <div class="card card-concept">
+        <div class="card-icon">💡</div>
+        <div class="card-body">
+            <strong>Paths you can use directly.</strong>
+            Every path in the listing (like <code>rooms/ariadnes-chamber.txt</code>) is
+            a valid argument to <code>get_page</code>, <code>str_replace_page</code>, or
+            <code>delete_page</code>. The agent copies a path from the listing and uses
+            it immediately — no guessing, no path manipulation.
+        </div>
+    </div>
+
+    <div class="card card-experiment">
+        <div class="card-icon">🔬</div>
+        <div class="card-body">
+            <strong>Try this.</strong>
+            Start a new chat session (close and reopen the AI chat). Ask the agent
+            "What rooms exist in this labyrinth?" &mdash; it can call
+            <code>list_pages</code> and find everything, without you re-explaining
+            anything. That's persistent memory at work.
+        </div>
     </div>
 
     <h2>Commit your progress</h2>

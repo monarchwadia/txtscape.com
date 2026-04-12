@@ -42,11 +42,15 @@
         room should follow this template." You haven't created any rooms yet &mdash; you've
         defined what a room <em>looks like</em>.</p>
 
-    <div class="callout">
-        <strong><code>{name}</code> is a hint, not a substitution.</strong> The server passes
-        the template text directly to your agent as part of its instructions. The agent reads
-        <code>{name}</code> and understands it means "put the title here." Nothing is
-        auto-filled by the server &mdash; it's guidance for the AI.
+    <div class="card card-concept">
+        <div class="card-icon">💡</div>
+        <div class="card-body">
+            <strong><code>{name}</code> is a hint, not a substitution.</strong>
+            The server passes the template text directly to your agent as part of its
+            instructions. The agent reads <code>{name}</code> and understands it means
+            "put the title here." Nothing is auto-filled by the server &mdash; it's
+            guidance for the AI.
+        </div>
     </div>
 
     <h2>Create your first room</h2>
@@ -95,17 +99,35 @@ walls close in and the air grows cold.
         The template is your lever. Change the template, and every room the agent creates
         will follow the new shape.</p>
 
-    <div class="callout">
-        You can open <code>.txtscape/pages/rooms/entrance-hall.txt</code> in your
-        editor &mdash; it's a plain text file. Edit it anytime. Pages belong to you, not
-        to the agent.
+    <div class="card card-concept">
+        <div class="card-icon">💡</div>
+        <div class="card-body">
+            <strong>Structure before content.</strong>
+            In real projects, this is how you get consistency. Define a template for
+            architecture decisions, runbooks, or API designs — and every page the agent
+            creates follows the same shape. No copy-paste, no reminding.
+        </div>
     </div>
 
-    <div class="callout">
-        <strong>About <code>_meta.hash</code>:</strong> Put_page returns a hash alongside
-        its confirmation. Your agent uses this automatically to detect conflicting edits
-        &mdash; if two agents write the same page concurrently, the second write is
-        rejected. You don't manage hashes manually; the agent handles it behind the scenes.
+    <div class="card card-tip">
+        <div class="card-icon">✅</div>
+        <div class="card-body">
+            <strong>Pages are just files.</strong>
+            You can open <code>.txtscape/pages/rooms/entrance-hall.txt</code> in your
+            editor &mdash; it's a plain text file. Edit it anytime. Pages belong to you,
+            not to the agent.
+        </div>
+    </div>
+
+    <div class="card card-concept">
+        <div class="card-icon">💡</div>
+        <div class="card-body">
+            <strong>About <code>_meta.hash</code></strong>
+            Put_page returns a hash alongside its confirmation. Your agent uses this
+            automatically to detect conflicting edits &mdash; if two agents write the
+            same page concurrently, the second write is rejected. You don't manage
+            hashes manually; the agent handles it behind the scenes.
+        </div>
     </div>
 
     <h2>Commit your progress</h2>

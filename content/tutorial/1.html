@@ -50,10 +50,12 @@ touch index.html</code></pre>
   }
 }</code></pre>
 
-    <div class="callout">
-        <strong>Other IDEs:</strong> Cursor, Windsurf, and other MCP-compatible editors have their
-        own configuration format. The command is the same: <code>npx -y @txtscape/mcp@latest</code>.
-        Check your IDE's MCP documentation for where to put it.
+    <div class="card card-tip">
+        <div class="card-icon">✅</div>
+        <div class="card-body">
+            <strong>Other IDEs work too.</strong>
+            See <a href="/">installation instructions</a> for Cursor, Windsurf, Claude Desktop, and Claude Code.
+        </div>
     </div>
 
     <h2>Verify it works</h2>
@@ -80,6 +82,16 @@ touch index.html</code></pre>
 git add -A
 git commit -m "initial project setup with txtscape"</code></pre>
 
+    <div class="card card-warning">
+        <div class="card-icon">⚠️</div>
+        <div class="card-body">
+            <strong>Do not gitignore <code>.txtscape</code>.</strong> The whole point is that
+            pages live in your repo &mdash; versioned, diffable, reviewable in PRs. If you
+            gitignore <code>.txtscape/</code>, your agent's memory disappears for every other
+            developer and every CI run.
+        </div>
+    </div>
+
     <h2>What you have so far</h2>
 
     <pre><code>labyrinth/
@@ -90,6 +102,16 @@ git commit -m "initial project setup with txtscape"</code></pre>
 
     <p>No game yet. No content. Just a project wired up to an AI agent that can remember things.
         Next, you'll teach it the shape of your world.</p>
+
+    <div class="card card-concept">
+        <div class="card-icon">💡</div>
+        <div class="card-body">
+            <strong>Why this matters.</strong>
+            Without txtscape, your agent forgets everything between conversations. You
+            re-explain your project, your decisions, your architecture — every time.
+            With txtscape, knowledge accumulates in your repo instead of evaporating.
+        </div>
+    </div>
 
     <div class="nav-links">
         <a href="/tutorial">&larr; Overview</a>

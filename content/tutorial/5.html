@@ -65,15 +65,29 @@
 
     <p><strong>Your pages are the source of truth. The code is derived from them.</strong></p>
 
+    <div class="card card-concept">
+        <div class="card-icon">💡</div>
+        <div class="card-body">
+            <strong>Knowledge-first development.</strong>
+            Most AI workflows go: explain in chat → generate code → pray it's consistent.
+            With txtscape: record knowledge → read it programmatically → generate code
+            from the source of truth. Every agent, every session, starts from the same facts.
+        </div>
+    </div>
+
     <p>Without txtscape, you'd describe the entire game in chat, the agent would generate
         code, and next session it would forget everything. With txtscape, the knowledge
         persists. Every session, every agent, starts from the same source.</p>
 
-    <div class="callout">
-        <strong>Snapshot vs. individual reads:</strong> <code>snapshot</code> loads all
-        pages in one call &mdash; ideal when the agent needs the full picture.
-        <code>get_page</code> reads one page at a time &mdash; better for targeted lookups.
-        The agent picks the right tool based on what you ask.
+    <div class="card card-concept">
+        <div class="card-icon">💡</div>
+        <div class="card-body">
+            <strong>Snapshot vs. individual reads.</strong>
+            <code>snapshot</code> loads all pages in one call &mdash; ideal when the
+            agent needs the full picture. <code>get_page</code> reads one page at a
+            time &mdash; better for targeted lookups. The agent picks the right tool
+            based on what you ask.
+        </div>
     </div>
 
     <h2>Commit your progress</h2>

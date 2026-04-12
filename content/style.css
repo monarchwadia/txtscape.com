@@ -158,6 +158,99 @@ pre code {
     margin-top: 12px;
 }
 
+/* Install dropdown */
+
+.install-label {
+    font-size: 0.88em;
+    color: var(--text-muted);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+}
+
+.install-select {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    font-family: inherit;
+    font-size: 0.95em;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    margin-bottom: 16px;
+    appearance: auto;
+}
+
+.install-file {
+    font-size: 0.82em;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+/* Info cards — "For Dummies" style */
+
+.card {
+    display: flex;
+    gap: 14px;
+    margin: 28px 0;
+    padding: 20px 24px;
+    border-radius: var(--radius);
+    font-size: 0.95em;
+    line-height: 1.7;
+}
+
+.card-icon {
+    flex-shrink: 0;
+    font-size: 1.4em;
+    line-height: 1.5;
+}
+
+.card-body strong {
+    display: block;
+    margin-bottom: 2px;
+}
+
+/* Card variants */
+
+.card-concept {
+    background: #e8eef8;
+    border-left: 4px solid #4a7cbf;
+}
+
+.card-concept .card-body strong {
+    color: #2c5a8f;
+}
+
+.card-warning {
+    background: #fdf3e6;
+    border-left: 4px solid var(--gold);
+}
+
+.card-warning .card-body strong {
+    color: #9a6c10;
+}
+
+.card-tip {
+    background: var(--bg-prompt);
+    border-left: 4px solid var(--green);
+}
+
+.card-tip .card-body strong {
+    color: var(--green-dark);
+}
+
+.card-experiment {
+    background: #f3eaf8;
+    border-left: 4px solid #8a5cb8;
+}
+
+.card-experiment .card-body strong {
+    color: #6a3d98;
+}
+
 .tools-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -176,6 +269,193 @@ pre code {
 
 .tool strong {
     color: var(--green);
+}
+
+/* Before/After comparison */
+
+.compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 16px;
+}
+
+.compare-col {
+    padding: 20px;
+    border-radius: var(--radius);
+    font-size: 0.95em;
+}
+
+.compare-col p {
+    margin: 8px 0;
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.compare-before {
+    background: #fdf0ee;
+    border: 1px solid #e8c4be;
+}
+
+.compare-after {
+    background: #eaf5ec;
+    border: 1px solid #b8d4be;
+}
+
+.compare-label {
+    font-weight: 700;
+    font-size: 1em;
+    margin-bottom: 12px;
+    color: var(--text-heading);
+}
+
+.compare-verdict {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--text-heading);
+    margin-top: 16px;
+    border-top: 1px solid var(--border-light);
+    padding-top: 12px;
+}
+
+/* How-it-works steps */
+
+.steps-how {
+    margin-top: 16px;
+}
+
+.step-how {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+}
+
+.step-how-num {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--green);
+    color: white;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    margin-top: 2px;
+}
+
+.step-how-body p {
+    margin: 4px 0 0 0;
+    color: var(--text-muted);
+    font-size: 0.93em;
+}
+
+/* Demo transcript */
+
+.demo-transcript {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-top: 16px;
+}
+
+.demo-line {
+    margin: 12px 0;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.93em;
+    line-height: 1.5;
+}
+
+.demo-line:first-child {
+    margin-top: 0;
+}
+
+.demo-user {
+    background: #eef3ea;
+}
+
+.demo-agent {
+    background: #e8eef8;
+}
+
+.demo-role {
+    font-weight: 700;
+    display: block;
+    font-size: 0.82em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+    color: var(--text-heading);
+}
+
+.demo-break {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.88em;
+    background: none;
+    padding: 4px 0;
+}
+
+/* CTA block */
+
+.cta-block {
+    text-align: center;
+    padding: 40px 24px;
+    margin: 40px 0;
+    background: var(--bg-card);
+    border: 2px solid var(--green);
+    border-radius: var(--radius);
+}
+
+.cta-block h2 {
+    margin-top: 0;
+}
+
+.cta-block p {
+    color: var(--text-muted);
+    max-width: 480px;
+    margin: 8px auto 20px;
+}
+
+.cta-button {
+    display: inline-block;
+    padding: 14px 32px;
+    background: var(--green);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 1.05em;
+    transition: background 0.15s;
+}
+
+.cta-button:hover {
+    background: var(--green-dark);
+}
+
+.github-banner {
+    margin-top: 48px;
+    padding: 16px 24px;
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    text-align: center;
+    font-size: 1.05em;
+}
+
+.github-banner a {
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 1.1em;
+}
+
+.github-banner a:hover {
+    text-decoration: underline;
 }
 
 /* Tutorial index */
@@ -283,19 +563,37 @@ pre code {
 .nav-links {
     display: flex;
     justify-content: space-between;
+    gap: 16px;
     margin-top: 56px;
     padding-top: 24px;
     border-top: 1px solid var(--border);
-    font-size: 0.95em;
 }
 
 .nav-links a {
+    display: inline-block;
+    padding: 14px 28px;
+    background: var(--bg-card);
+    border: 2px solid var(--green);
+    border-radius: var(--radius-sm);
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 1em;
+    color: var(--green);
+    transition: background 0.15s, color 0.15s;
 }
 
 .nav-links a:hover {
-    text-decoration: underline;
+    background: var(--green);
+    color: white;
+}
+
+.nav-links a:last-child {
+    background: var(--green);
+    color: white;
+}
+
+.nav-links a:last-child:hover {
+    background: var(--green-dark);
 }
 
 /* Lists */
@@ -324,5 +622,13 @@ li {
 
     .tools-grid {
         grid-template-columns: 1fr;
+    }
+
+    .compare {
+        grid-template-columns: 1fr;
+    }
+
+    .step-how {
+        gap: 12px;
     }
 }

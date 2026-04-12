@@ -7,10 +7,7 @@
       "cwd": "${workspaceFolder}"
     },
     "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest"
-      ]
+      "url": "http://host.docker.internal:8931/mcp"
     }
   }
 }

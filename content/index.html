@@ -27,55 +27,208 @@
 
 <body>
     <h1>txtscape</h1>
-    <p class="tagline">Persistent project memory for AI agents.</p>
+    <p class="tagline">Your AI agent forgets everything between conversations. Fix that.</p>
 
-    <p>An MCP server that gives your AI agent a structured, searchable memory that lives in your repo. Plain
-        <code>.txt</code> pages, committed to git, organized however your project needs.
-    </p>
-
-    <p>Your agent remembers decisions, patterns, and context across conversations. The knowledge stays in the repo,
-        versioned and reviewable, not locked in a chat history that disappears.</p>
-
-    <div class="hero-cta">
-        <p><strong>Install</strong></p>
-        <p class="step">TBD &mdash; installation instructions coming soon.</p>
-        <p class="step">Visit <a href="https://github.com/monarchwadia/txtscape.com">the repo</a> for the latest.</p>
+    <!-- CTA -->
+    <div class="cta-block">
+        <h2>Try it in 30 minutes</h2>
+        <p>Build a text adventure game while learning how txtscape gives your AI agent
+            persistent memory. No prior setup beyond an IDE with AI chat.</p>
+        <a href="/tutorial" class="cta-button">Start the tutorial &rarr;</a>
     </div>
 
-    <h2>What it does</h2>
+    <p>txtscape is an MCP server that gives your agent a persistent, searchable memory — plain
+        <code>.txt</code> files committed to git. No database. No external service. Just files
+        in your repo that your agent reads and writes.
+    </p>
 
-    <p>11 MCP tools for managing project knowledge:</p>
+    <!-- INSTALL -->
+    <div class="hero-cta">
+        <p><strong>Install</strong></p>
+
+        <label for="ide-select" class="install-label">Choose your editor:</label>
+        <select id="ide-select" class="install-select" onchange="updateInstall()">
+            <option value="vscode" selected>VS Code / GitHub Copilot</option>
+            <option value="cursor">Cursor</option>
+            <option value="windsurf">Windsurf</option>
+            <option value="claude-desktop">Claude Desktop</option>
+            <option value="claude-code">Claude Code (CLI)</option>
+        </select>
+
+        <p class="install-file" id="install-file"></p>
+        <pre id="install-pre"><code id="install-code"></code></pre>
+        <p class="step">Then open your editor and start a new AI chat. Ask: "List the txtscape pages."</p>
+    </div>
+
+    <script>
+        const installs = {
+            vscode: {
+                file: '.vscode/mcp.json',
+                code: `{
+  "servers": {
+    "txtscape": {
+      "command": "npx",
+      "args": ["-y", "@txtscape/mcp@latest"]
+    }
+  }
+}`
+            },
+            cursor: {
+                file: '.cursor/mcp.json',
+                code: `{
+  "mcpServers": {
+    "txtscape": {
+      "command": "npx",
+      "args": ["-y", "@txtscape/mcp@latest"]
+    }
+  }
+}`
+            },
+            windsurf: {
+                file: '~/.codeium/windsurf/mcp_config.json',
+                code: `{
+  "mcpServers": {
+    "txtscape": {
+      "command": "npx",
+      "args": ["-y", "@txtscape/mcp@latest"]
+    }
+  }
+}`
+            },
+            'claude-desktop': {
+                file: 'Claude Desktop → Settings → Developer → Edit Config',
+                code: `{
+  "mcpServers": {
+    "txtscape": {
+      "command": "npx",
+      "args": ["-y", "@txtscape/mcp@latest"]
+    }
+  }
+}`
+            },
+            'claude-code': {
+                file: 'Run this command in your project:',
+                code: `claude mcp add txtscape -- npx -y @txtscape/mcp@latest`
+            }
+        };
+
+        function updateInstall() {
+            const sel = document.getElementById('ide-select').value;
+            const info = installs[sel];
+            document.getElementById('install-file').textContent = info.file;
+            document.getElementById('install-code').textContent = info.code;
+        }
+        updateInstall();
+    </script>
+
+    <!-- BEFORE / AFTER -->
+    <h2>Without txtscape vs. with</h2>
+
+    <div class="compare">
+        <div class="compare-col compare-before">
+            <div class="compare-label">❌ Without</div>
+            <p>"Remind me, are we using Postgres or SQLite?"</p>
+            <p>"What's our error handling pattern again?"</p>
+            <p>"I know we decided this last week…"</p>
+            <p class="compare-verdict">Every conversation starts from zero.</p>
+        </div>
+        <div class="compare-col compare-after">
+            <div class="compare-label">✅ With txtscape</div>
+            <p>"Read the architecture decisions and follow the existing patterns."</p>
+            <p class="compare-verdict">The agent reads your pages and already knows.</p>
+        </div>
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <h2>How it works</h2>
+
+    <div class="steps-how">
+        <div class="step-how">
+            <div class="step-how-num">1</div>
+            <div class="step-how-body">
+                <strong>Define your structure</strong>
+                <p>Create a <code>config.json</code> with "concerns" — named folders
+                    like <code>decisions/</code>, <code>runbooks/</code>, <code>architecture/</code>.
+                    Add optional templates so every page follows the same shape.</p>
+            </div>
+        </div>
+        <div class="step-how">
+            <div class="step-how-num">2</div>
+            <div class="step-how-body">
+                <strong>Your agent writes knowledge</strong>
+                <p>As you work, the agent stores decisions, patterns, and context using
+                    <code>put_page</code>. Pages are plain text with markdown formatting,
+                    living in <code>.txtscape/pages/</code>.
+                </p>
+            </div>
+        </div>
+        <div class="step-how">
+            <div class="step-how-num">3</div>
+            <div class="step-how-body">
+                <strong>Every conversation starts informed</strong>
+                <p>New chat session? The agent calls <code>search_pages</code> or
+                    <code>snapshot</code> and picks up right where you left off.
+                    Knowledge accumulates. Context never evaporates.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- DEMO TRANSCRIPT -->
+    <h2>What it looks like</h2>
+
+    <div class="demo-transcript">
+        <div class="demo-line demo-user">
+            <span class="demo-role">You</span>
+            "Record that we chose Postgres over SQLite. Reason: we need concurrent writes and
+            the team already knows it."
+        </div>
+        <div class="demo-line demo-agent">
+            <span class="demo-role">Agent</span>
+            <code>put_page</code> → <code>decisions/database-choice.txt</code> created
+        </div>
+        <div class="demo-line demo-break">— next day, new conversation —</div>
+        <div class="demo-line demo-user">
+            <span class="demo-role">You</span>
+            "Add a users table migration."
+        </div>
+        <div class="demo-line demo-agent">
+            <span class="demo-role">Agent</span>
+            <code>search_pages</code> → found <em>decisions/database-choice.txt</em><br>
+            "I see you chose Postgres for concurrent writes. I'll write the migration using
+            PostgreSQL syntax with a serial primary key…"
+        </div>
+    </div>
+
+    <!-- WHAT'S IN THE BOX -->
+    <h2>What's in the box</h2>
+
+    <p class="text-muted">11 MCP tools. Your agent picks the right one automatically.</p>
 
     <div class="tools-grid">
-        <div class="tool"><strong>get_page</strong> read a page</div>
         <div class="tool"><strong>put_page</strong> create/update</div>
+        <div class="tool"><strong>get_page</strong> read a page</div>
+        <div class="tool"><strong>search_pages</strong> text/regex search</div>
+        <div class="tool"><strong>list_pages</strong> browse tree</div>
+        <div class="tool"><strong>snapshot</strong> bulk read</div>
+        <div class="tool"><strong>str_replace_page</strong> surgical edit</div>
+        <div class="tool"><strong>append_page</strong> add to end</div>
         <div class="tool"><strong>delete_page</strong> remove</div>
         <div class="tool"><strong>move_page</strong> rename/move</div>
-        <div class="tool"><strong>append_page</strong> add to end</div>
-        <div class="tool"><strong>str_replace_page</strong> surgical edit</div>
-        <div class="tool"><strong>list_pages</strong> browse folders</div>
-        <div class="tool"><strong>search_pages</strong> text/regex search</div>
-        <div class="tool"><strong>snapshot</strong> bulk read</div>
         <div class="tool"><strong>related_pages</strong> cross-refs</div>
         <div class="tool"><strong>page_history</strong> git log</div>
     </div>
 
-    <h2>Why?</h2>
-
-    <p>AI agents lose context between conversations. Every session starts from scratch &mdash; re-reading code,
-        re-discovering architecture, re-learning project conventions. txtscape gives agents a persistent memory they
-        can read and write, so knowledge accumulates instead of evaporating.</p>
-
-    <p class="text-muted">Pages are plain text with markdown formatting, stored in
-        <code>.txtscape/pages/</code> in your repo. No database, no external service &mdash; just files in git.
-        Searchable, diffable, reviewable in PRs.
+    <p class="text-muted" style="margin-top: 24px;">
+        Pages are plain text with markdown formatting, stored in <code>.txtscape/pages/</code>.
+        Committed to git. Diffable. Reviewable in PRs. No database, no external service.
     </p>
 
-    <h2>How it works</h2>
+    <h2>Project structure</h2>
 
     <pre>
 .txtscape/
-├── config.json          # optional: define your project's memory structure
+├── config.json          # define your concerns + templates
 └── pages/
     ├── decisions/
     │   └── use-postgres.txt
@@ -85,19 +238,15 @@
         └── auth-gotchas.txt</pre>
 
     <p class="text-muted">
-        The <code>config.json</code> file defines "concerns" &mdash; named folders with descriptions and optional
-        templates. Your agent sees this taxonomy automatically and knows where to put things. Every project can
-        define its own shape: a startup might have <code>customers/</code> and <code>pricing/</code>, an infra
-        project might have <code>runbooks/</code> and <code>incidents/</code>.</p>
-
-    <h2>Get started</h2>
-
-    <p><a href="/tutorial">Follow the tutorial</a> &mdash; build a text adventure game and learn
-        how txtscape gives your AI agent persistent memory. Takes about 30 minutes.</p>
-
-    <p>
-        <a href="https://github.com/monarchwadia/txtscape.com">source</a>
+        Every project defines its own shape. A startup might have <code>customers/</code> and
+        <code>pricing/</code>. An infra team might have <code>runbooks/</code> and
+        <code>incidents/</code>. You decide what matters.
     </p>
+
+    <div class="github-banner">
+        <a href="https://github.com/monarchwadia/txtscape.com">⭐ Star on GitHub</a>
+        <span class="text-muted">&mdash; open source, MIT licensed</span>
+    </div>
 </body>
 
 </html>
