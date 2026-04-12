@@ -239,7 +239,7 @@ func (s *server) handleRequest(req jsonrpcRequest) jsonrpcResponse {
 				},
 				"serverInfo": map[string]any{
 					"name":    "txtscape",
-					"version": "0.0.7",
+					"version": "0.0.8",
 				},
 				"instructions": s.buildInstructions(),
 			},
