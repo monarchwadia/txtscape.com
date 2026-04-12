@@ -17,14 +17,23 @@ txtscape is an MCP server that gives your agent persistent, searchable memory �
 
 ## Why txtscape
 
-| | | |
-|---|---|---|
-| 📁 **Plain text in git** | 🔒 **Zero dependencies** | 🧠 **LLM-native** |
-| 📁 **Plain text in git**<br/> Diffable, reviewable in PRs, portable | Pure Go stdlib. Nothing to audit | Plain text any model understands |
-| 🚫 **No database** | 🏗️ **Configurable structure** | 🔓 **No lock-in** |
-| Filesystem is the storage layer | Each project defines its own taxonomy | Stop using it — your `.txt` files stay |
-| � **No file sprawl** | ⚡ **Stdio subprocess** | 📜 **MIT licensed** |
-| One `.txtscape/` folder. No random markdown files in your tree | No ports, no background process, no attack surface | Free forever |
+<table>
+<tr>
+<td valign="top" align="left">📁 <strong>Plain text in git</strong><hr>Diffable, reviewable in PRs, and portable across any tool. Your agent's memory gets the same code review process as your code.</td>
+<td valign="top" align="left">🔒 <strong>Zero dependencies</strong><hr>Pure Go standard library. One binary, nothing to audit, no supply chain to worry about.</td>
+<td valign="top" align="left">🧠 <strong>LLM-native</strong><hr>Plain text with markdown formatting that any model already understands. No custom schema, no parsing layer.</td>
+</tr>
+<tr>
+<td valign="top" align="left">🚫 <strong>No database</strong><hr>The filesystem is the storage layer. No install, no migrations, no process to keep running.</td>
+<td valign="top" align="left">🏗️ <strong>Configurable structure</strong><hr>Define your own taxonomy — <code>decisions/</code>, <code>runbooks/</code>, <code>architecture/</code> — with optional templates so every page follows the same shape.</td>
+<td valign="top" align="left">🔓 <strong>No lock-in</strong><hr>Stop using txtscape and your <code>.txt</code> files stay right where they are. They're just files in your repo.</td>
+</tr>
+<tr>
+<td valign="top" align="left">✨ <strong>No file sprawl</strong><hr>Everything lives in one <code>.txtscape/</code> folder. No random markdown files cluttering your project tree or polluting search results.</td>
+<td valign="top" align="left">⚡ <strong>Stdio subprocess</strong><hr>Your IDE launches it, talks over stdin/stdout, and it exits when done. No ports to open, no daemon to manage, no attack surface.</td>
+<td valign="top" align="left">📜 <strong>MIT licensed</strong><hr>Free and open source forever. Use it however you want, commercially or otherwise.</td>
+</tr>
+</table>
 
 ## Works with
 
