@@ -1,40 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>txtscape</title>
-<link rel="stylesheet" href="/style.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>txtscape</title>
+    <link rel="stylesheet" href="/style.css">
 </head>
+
 <body>
-<div id="app">
-  <nav id="topnav">
-    <div class="nav-left">
-      <span class="logo">txtscape</span>
-      <a href="#/" class="nav-link" data-view="dashboard">Dashboard</a>
-      <a href="#/explore" class="nav-link" data-view="explore">Explore</a>
-    </div>
-    <div class="nav-right">
-      <div class="search-box">
-        <input type="text" id="search-input" placeholder="Search pages…" autocomplete="off">
-        <div id="search-results" class="search-dropdown" hidden></div>
-      </div>
-      <button id="activity-toggle" class="icon-btn" title="Activity feed">⚡</button>
-    </div>
-  </nav>
+    <div id="app">
+        <nav id="topnav">
+            <div class="nav-left">
+                <span class="logo">txtscape</span>
+                <a href="#/" class="nav-link" data-view="dashboard">Dashboard</a>
+                <a href="#/explore" class="nav-link" data-view="explore">Explore</a>
+            </div>
+            <div class="nav-right">
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="Search pages…" autocomplete="off">
+                    <div id="search-results" class="search-dropdown" hidden></div>
+                </div>
+                <button id="activity-toggle" class="icon-btn" title="Activity feed">⚡</button>
+            </div>
+        </nav>
 
-  <div id="main-layout">
-    <main id="content"></main>
-    <aside id="activity-panel" class="collapsed">
-      <div class="panel-header">
-        <span>Activity</span>
-        <button id="activity-close" class="icon-btn">✕</button>
-      </div>
-      <div id="activity-list"></div>
-    </aside>
-  </div>
-</div>
+        <div id="main-layout">
+            <main id="content"></main>
+            <aside id="activity-panel" class="collapsed">
+                <div class="panel-header">
+                    <span>Activity</span>
+                    <button id="activity-close" class="icon-btn">✕</button>
+                </div>
+                <div id="activity-list"></div>
+            </aside>
+        </div>
+    </div>
 
-<script src="/app.js"></script>
+    <script src="/app.js"></script>
 </body>
+
 </html>
