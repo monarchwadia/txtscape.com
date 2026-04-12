@@ -12,6 +12,7 @@ txtscape is an MCP server that gives your agent persistent, searchable memory �
 |---|---|
 | "Remind me, are we using Postgres or SQLite?" | "Read the architecture decisions and follow the existing patterns." |
 | "What's our error handling pattern again?" | The agent reads your pages and already knows. |
+| Random `.md` files proliferating across your project | Everything in one `.txtscape/` folder — your tree stays clean |
 | Every conversation starts from zero. | Knowledge accumulates in your repo. |
 
 ## Why txtscape
@@ -19,11 +20,11 @@ txtscape is an MCP server that gives your agent persistent, searchable memory �
 | | | |
 |---|---|---|
 | 📁 **Plain text in git** | 🔒 **Zero dependencies** | 🧠 **LLM-native** |
-| Diffable, reviewable in PRs, portable | Pure Go stdlib. Nothing to audit | Plain text any model understands |
+| 📁 **Plain text in git**<br/> Diffable, reviewable in PRs, portable | Pure Go stdlib. Nothing to audit | Plain text any model understands |
 | 🚫 **No database** | 🏗️ **Configurable structure** | 🔓 **No lock-in** |
 | Filesystem is the storage layer | Each project defines its own taxonomy | Stop using it — your `.txt` files stay |
-| 🤫 **Stays out of your way** | ⚡ **Stdio subprocess** | 📜 **MIT licensed** |
-| Pages live in `.txtscape/`, not scattered across your project | No ports, no background process, no attack surface | Free forever |
+| � **No file sprawl** | ⚡ **Stdio subprocess** | 📜 **MIT licensed** |
+| One `.txtscape/` folder. No random markdown files in your tree | No ports, no background process, no attack surface | Free forever |
 
 ## Works with
 

@@ -1,10 +1,10 @@
-    <h2>Add a characters concern</h2>
+<h2>Add a characters concern</h2>
 
-    <p>In step 2, you defined a rooms concern with a template. Now do the same for
-        characters. Open <code>.txtscape/config.json</code> and add a second concern:</p>
+<p>In step 2, you defined a rooms concern with a template. Now do the same for
+    characters. Open <code>.txtscape/config.json</code> and add a second concern:</p>
 
-    <p class="file-label">.txtscape/config.json</p>
-    <pre><code>{
+<p class="file-label">.txtscape/config.json</p>
+<pre><code>{
   "concerns": [
     {
       "folderName": "rooms",
@@ -21,30 +21,30 @@
   ]
 }</code></pre>
 
-    <h2>Create the Minotaur</h2>
+<h2>Create the Minotaur</h2>
 
-    <div class="agent-prompt">
-        <div class="label">Tell your agent</div>
-        "Create a character called The Minotaur. He's in the Minotaur's Lair. He's
-        ancient, tragic, and angry. He guards the golden hoard and speaks in riddles."
-    </div>
+<div class="agent-prompt">
+    <div class="label">Tell your agent</div>
+    "Create a character called The Minotaur. He's in the Minotaur's Lair. He's
+    ancient, tragic, and angry. He guards the golden hoard and speaks in riddles."
+</div>
 
-    <p>The agent creates <code>characters/minotaur.txt</code> following your characters
-        template &mdash; <code>## Description</code>, <code>## Location</code>,
-        <code>## Dialogue</code>.
-    </p>
+<p>The agent creates <code>characters/minotaur.txt</code> following your characters
+    template &mdash; <code>## Description</code>, <code>## Location</code>,
+    <code>## Dialogue</code>.
+</p>
 
-    <h2>Create Ariadne</h2>
+<h2>Create Ariadne</h2>
 
-    <div class="agent-prompt">
-        <div class="label">Tell your agent</div>
-        "Create a character called Ariadne. She's in Ariadne's Chamber.
-        She offers the player a ball of thread and warns them about the Minotaur."
-    </div>
+<div class="agent-prompt">
+    <div class="label">Tell your agent</div>
+    "Create a character called Ariadne. She's in Ariadne's Chamber.
+    She offers the player a ball of thread and warns them about the Minotaur."
+</div>
 
-    <p>Your project now has two kinds of knowledge, each in its own folder:</p>
+<p>Your project now has two kinds of knowledge, each in its own folder:</p>
 
-    <pre><code>📄 characters/ariadne.txt  —  # Ariadne
+<pre><code>📄 characters/ariadne.txt  —  # Ariadne
 📄 characters/minotaur.txt  —  # The Minotaur
 📄 rooms/ariadnes-chamber.txt  —  # Ariadne's Chamber
 📄 rooms/entrance-hall.txt  —  # The Entrance Hall
@@ -52,21 +52,31 @@
 📄 rooms/twisting-corridors.txt  —  # Twisting Corridors
 📄 rooms/underground-pool.txt  —  # Underground Pool</code></pre>
 
-    <p>Notice what you did: you followed the same pattern from step 2 &mdash; define a
-        concern, give it a template, ask the agent to create content. The agent shaped its
-        output to match, both times.</p>
+<p>Notice what you did: you followed the same pattern from step 2 &mdash; define a
+    concern, give it a template, ask the agent to create content. The agent shaped its
+    output to match, both times.</p>
 
-    <div class="card card-concept">
-        <div class="card-icon">💡</div>
-        <div class="card-body">
-            <strong>The training wheels are off.</strong>
-            You added this concern yourself. Nobody told you the exact JSON or the
-            template fields &mdash; you adapted the pattern. That's how txtscape works
-            in real projects: you design the shape, then keep using it.
-        </div>
+<div class="card card-tip">
+    <div class="card-icon">✅</div>
+    <div class="card-body">
+        <strong>Seven files. Zero clutter.</strong>
+        All seven pages live inside <code>.txtscape/pages/</code>. Your project root
+        still has just <code>index.html</code> and <code>package.json</code> &mdash;
+        no sprawling markdown files, no <code>AI_CONTEXT.md</code> polluting your tree.
     </div>
+</div>
 
-    <h2>Commit your progress</h2>
+<div class="card card-concept">
+    <div class="card-icon">💡</div>
+    <div class="card-body">
+        <strong>The training wheels are off.</strong>
+        You added this concern yourself. Nobody told you the exact JSON or the
+        template fields &mdash; you adapted the pattern. That's how txtscape works
+        in real projects: you design the shape, then keep using it.
+    </div>
+</div>
 
-    <pre><code>git add .txtscape
+<h2>Commit your progress</h2>
+
+<pre><code>git add .txtscape
 git commit -m "add characters concern with Minotaur and Ariadne"</code></pre>
