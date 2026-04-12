@@ -1415,6 +1415,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "cannot determine working directory: %v\n", err)
 		os.Exit(1)
 	}
+
+	if len(os.Args) >= 2 && os.Args[1] == "ui" {
+		serveUI(root)
+		return
+	}
+
 	s := newServer(root)
 	s.serve()
 }

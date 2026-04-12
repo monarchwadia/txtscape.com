@@ -30,6 +30,11 @@
             "folderName": "todos",
             "label": "Todos",
             "description": "Plans, next steps, and things to build. One page per initiative. Update status as work starts and completes. Remove or archive when done."
+        },
+        {
+            "folderName": "roadmap",
+            "label": "Roadmap",
+            "description": "Product roadmap tracked as a kanban board. Each subfolder is a swimlane. First folder is backlog (not started), last is shipped (completed)."
         }
     ]
 }

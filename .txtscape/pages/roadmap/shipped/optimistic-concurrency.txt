@@ -1,0 +1,3 @@
+# Optimistic Concurrency
+
+SHA-256 hash-based optimistic concurrency on put_page, append_page, and str_replace_page to prevent stale overwrites.

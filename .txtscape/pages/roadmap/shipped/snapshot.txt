@@ -1,0 +1,3 @@
+# Snapshot Bulk Read
+
+Load all pages in one call with pagination. Lets agents bootstrap context quickly at conversation start.

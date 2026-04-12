@@ -1,0 +1,41 @@
+# SPA UI Architecture
+
+## Context
+Users want a way to browse their txtscape knowledge base visually — see the folder tree, read pages, search, and understand what's stored. A TUI was considered but a browser-based SPA is more accessible and can render markdown formatting.
+
+## Decision
+Roll the SPA into the existing txtscape-mcp binary as a `ui` subcommand.
+
+Architecture:
+- `txtscape-mcp ui` starts an HTTP server on localhost
+- Same binary, new code path — no separate project
+- The UI process and the MCP stdio process share the filesystem (.txtscape/pages/), not a protocol
+- Frontend: vanilla JS, no framework, no build step, embedded via Go embed.FS
+- Backend: stdlib net/http only, zero external dependencies
+- SSE for live updates (filesystem polling, not fsnotify, to keep zero deps)
+- Activity feed is ephemeral — in-memory slice, lost when server stops
+
+REST API endpoints:
+- GET /api/pages         → list all pages (recursive tree)
+- GET /api/pages/{path}  → read a single page
+- GET /api/search?q=...  → full-text search
+- GET /api/config        → load config (concerns, nickname)
+- GET /api/events        → SSE stream for live updates
+
+SPA features (readonly v1):
+- Folder tree sidebar
+- Page viewer with markdown-ish rendering
+- Full-text search
+- Config-aware concern labels
+- Activity feed (ephemeral)
+- Responsive layout
+
+## Consequences
+- Binary size increases slightly (embedded HTML/CSS/JS)
+- No new dependencies — stays pure stdlib
+- MCP server and UI server are independent processes, no coordination needed
+- Frontend has no build step — just .html/.css/.js files
+- Can later add write operations if needed
+- Kanban detection: if a concern folder contains only subfolders, auto-renders as kanban board
+- First subfolder = not-started, last = completed, middle = in-progress
+- Config changes detected via SSE polling — no page reload needed

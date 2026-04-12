@@ -1,0 +1,3 @@
+# CLI Export Command
+
+Add a `txtscape export` command that dumps all pages to stdout as JSON for backup or migration purposes.
