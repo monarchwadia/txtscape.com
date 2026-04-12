@@ -1,0 +1,13 @@
+# Design Principles
+
+## Think like a marketer
+README and homepage are conversion pages, not documentation. Lead with benefits, not features. Every page a visitor lands on should move them toward trying the product.
+
+## No clutter
+If something can be a link instead of inline content, make it a link. If a section doesn't earn its space, cut it. Less is more.
+
+## User's path matters
+Prominent CTAs. Buttons people can't miss. Important things at the top, not buried at the bottom. Think about where eyes go and what action you want next.
+
+## Visual QA
+Preview changes in a browser before shipping. If you haven't seen it rendered, it's not done.

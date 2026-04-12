@@ -1,88 +1,53 @@
 # txtscape
 
-Persistent project memory for AI agents.
+**Your AI agent forgets everything between conversations. Fix that.**
 
-## What This Is
+txtscape is an MCP server that gives your agent persistent, searchable memory — plain `.txt` files committed to git.
 
-An MCP server that gives your AI agent a structured, searchable memory that lives in your repo. Plain `.txt` pages, committed to git, organized however your project needs.
+[Install](https://txtscape.com) · [Tutorial](https://txtscape.com/tutorial) · [npm](https://www.npmjs.com/package/@txtscape/mcp)
 
-Your agent remembers decisions, patterns, and context across conversations. The knowledge stays in the repo — versioned, diffable, reviewable in PRs — not locked in a chat history that disappears.
+## Without txtscape vs. with
+
+| ❌ Without | ✅ With txtscape |
+|---|---|
+| "Remind me, are we using Postgres or SQLite?" | "Read the architecture decisions and follow the existing patterns." |
+| "What's our error handling pattern again?" | The agent reads your pages and already knows. |
+| Every conversation starts from zero. | Knowledge accumulates in your repo. |
 
 ## Why txtscape
 
-- **Zero dependencies** — pure Go standard library. Nothing to audit, nothing to break.
-- **No database** — the filesystem is the storage layer. Plain `.txt` files in `.txtscape/pages/`.
-- **Plain text in git** — diffable, reviewable in PRs, portable across tools.
-- **Configurable taxonomy** — each project defines its own memory structure via `config.json`.
-- **No lock-in** — stop using txtscape and your `.txt` files stay. They're just files.
-- **Stays out of your way** — pages live in `.txtscape/`, not scattered markdown files across your project. Add a `.ignore` file to exclude them from code search.
-- **LLM-native** — plain text that any model already understands. No special format to parse.
-- **Stdio subprocess** — your IDE launches it, talks over stdin/stdout, and it exits when done. No ports, no background process, no attack surface.
-- **MIT licensed**
+| | | |
+|---|---|---|
+| 📁 **Plain text in git** | 🔒 **Zero dependencies** | 🧠 **LLM-native** |
+| Diffable, reviewable in PRs, portable | Pure Go stdlib. Nothing to audit | Plain text any model understands |
+| 🚫 **No database** | 🏗️ **Configurable structure** | 🔓 **No lock-in** |
+| Filesystem is the storage layer | Each project defines its own taxonomy | Stop using it — your `.txt` files stay |
+| 🤫 **Stays out of your way** | ⚡ **Stdio subprocess** | 📜 **MIT licensed** |
+| Pages live in `.txtscape/`, not scattered across your project | No ports, no background process, no attack surface | Free forever |
 
-### Works with
+## Works with
 
 VS Code (Copilot) · Cursor · Windsurf · Claude Desktop · Claude Code · Zed · JetBrains (via MCP plugin) · Neovim (via MCP plugins) — any MCP-compatible client.
 
-## Install
+## What it looks like
 
-TBD — installation instructions coming soon.
+> **You:** "Record that we chose Postgres over SQLite. Reason: we need concurrent writes and the team already knows it."
+>
+> **Agent:** `put_page` → `decisions/database-choice.txt` created
+>
+> *— next day, new conversation —*
+>
+> **You:** "Add a users table migration."
+>
+> **Agent:** `search_pages` → found *decisions/database-choice.txt*
+> "I see you chose Postgres for concurrent writes. I'll write the migration using PostgreSQL syntax with a serial primary key…"
 
-## How It Works
+## Get started
 
-txtscape-mcp runs as a stdio MCP server. Your IDE launches it as a subprocess and communicates via JSON-RPC over stdin/stdout. Pages are stored as plain `.txt` files in `.txtscape/pages/` in your repo.
+👉 **[Install in 2 minutes](https://txtscape.com)** — pick your editor, paste one config block, done.
 
-```
-.txtscape/
-├── config.json          # optional: define your project's memory structure
-└── pages/
-    ├── decisions/
-    │   └── use-postgres.txt
-    ├── architecture/
-    │   └── api-design.txt
-    └── learnings/
-        └── auth-gotchas.txt
-```
-
-### Concerns
-
-The optional `config.json` defines "concerns" — named folders with descriptions and templates. Your agent sees this taxonomy at session start and knows where to put things. Every project can define its own shape.
-
-### Tools
-
-11 MCP tools:
-
-| Tool | Description |
-|------|-------------|
-| `get_page` | Read a page (returns content + hash for concurrency) |
-| `put_page` | Create or update a page |
-| `append_page` | Append to an existing page |
-| `delete_page` | Delete a page |
-| `move_page` | Rename or move a page |
-| `str_replace_page` | Surgical find-and-replace edit |
-| `list_pages` | Browse folders (with first-line previews) |
-| `search_pages` | Full-text or regex search across all pages |
-| `snapshot` | Bulk-read all pages in a subtree |
-| `related_pages` | Find cross-references (incoming + outgoing) |
-| `page_history` | Git commit history for a page |
-
-## Build
-
-```
-make mcp            # build txtscape-mcp binary
-make mcp-test       # run all tests (unit + integration + e2e)
-make mcp-test-unit  # unit tests only
-```
-
-## Landing Page
-
-The `txtscape.com` site is a simple landing page describing the project:
-
-```
-make build  # build the landing page server
-make dev    # run locally on :8080
-```
+👉 **[Try the tutorial](https://txtscape.com/tutorial)** — build a text adventure game in 30 minutes while learning how persistent memory works.
 
 ## License
 
-MIT — see [LICENSE.txt](LICENSE.txt).
+MIT — see [LICENSE.md](LICENSE.md).
