@@ -1,31 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>txtscape — Persistent project memory for AI agents</title>
-    <meta name="description"
-        content="Give your AI agent persistent memory that lives in your repo. Plain text pages, committed to git, searchable and structured. An MCP server for any IDE.">
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://txtscape.com/">
-    <meta property="og:title" content="txtscape">
-    <meta property="og:description"
-        content="Persistent project memory for AI agents. Plain text pages committed to git. An MCP server for any IDE.">
-    <meta property="og:site_name" content="txtscape">
-
-    <!-- Twitter / X -->
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="txtscape">
-    <meta name="twitter:description"
-        content="Persistent project memory for AI agents. Plain text pages committed to git. An MCP server for any IDE.">
-
-    <link rel="stylesheet" href="/style.css">
-</head>
-
-<body>
     <h1>txtscape</h1>
     <p class="tagline">Your AI agent forgets everything between conversations. Fix that.</p>
 
@@ -224,6 +196,72 @@
         Committed to git. Diffable. Reviewable in PRs. No database, no external service.
     </p>
 
+    <!-- WHY TXTSCAPE -->
+    <h2>Why txtscape</h2>
+
+    <div class="features-grid">
+        <div class="feature">
+            <div class="feature-icon">📦</div>
+            <strong>Zero dependencies</strong>
+            <p>Pure Go standard library. Nothing to audit, nothing to break.</p>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">💾</div>
+            <strong>No database</strong>
+            <p>The filesystem is the storage layer. Plain <code>.txt</code> files.</p>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🔀</div>
+            <strong>Plain text in git</strong>
+            <p>Diffable, reviewable in PRs, portable across tools.</p>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🗂️</div>
+            <strong>Configurable taxonomy</strong>
+            <p>Each project defines its own memory structure.</p>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🔓</div>
+            <strong>No lock-in</strong>
+            <p>Stop using txtscape and your <code>.txt</code> files stay. They're just files.</p>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🧹</div>
+            <strong>Stays out of your way</strong>
+            <p>Pages live in <code>.txtscape/</code>, not scattered across your project.</p>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🤖</div>
+            <strong>LLM-native</strong>
+            <p>Plain text that any model already understands. No special format.</p>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🔌</div>
+            <strong>Stdio subprocess</strong>
+            <p>No ports, no background process, no attack surface.</p>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">⚖️</div>
+            <strong>MIT licensed</strong>
+            <p>Use it however you want. Free and open source.</p>
+        </div>
+    </div>
+
+    <!-- WORKS WITH -->
+    <div class="works-with">
+        <strong>Works with any MCP-compatible editor</strong>
+        <div class="works-with-list">
+            <span>VS Code (Copilot)</span>
+            <span>Cursor</span>
+            <span>Windsurf</span>
+            <span>Claude Desktop</span>
+            <span>Claude Code</span>
+            <span>Zed</span>
+            <span>JetBrains</span>
+            <span>Neovim</span>
+        </div>
+    </div>
+
     <h2>Project structure</h2>
 
     <pre>
@@ -247,6 +285,3 @@
         <a href="https://github.com/monarchwadia/txtscape.com">⭐ Star on GitHub</a>
         <span class="text-muted">&mdash; open source, MIT licensed</span>
     </div>
-</body>
-
-</html>

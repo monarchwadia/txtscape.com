@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{.Title}}</title>
+    <meta name="description" content="{{.Description}}">
+    {{- if .OG}}
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://txtscape.com/">
+    <meta property="og:title" content="txtscape">
+    <meta property="og:description"
+        content="Persistent project memory for AI agents. Plain text pages committed to git. An MCP server for any IDE.">
+    <meta property="og:site_name" content="txtscape">
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="txtscape">
+    <meta name="twitter:description"
+        content="Persistent project memory for AI agents. Plain text pages committed to git. An MCP server for any IDE.">
+    {{- end}}
+
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    {{- if .Nav}}
+    <nav class="nav-header">
+        {{.Nav}}
+    </nav>
+    {{- end}}
+
+    {{.Body}}
+</body>
+
+</html>

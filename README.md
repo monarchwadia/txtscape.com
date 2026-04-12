@@ -8,6 +8,22 @@ An MCP server that gives your AI agent a structured, searchable memory that live
 
 Your agent remembers decisions, patterns, and context across conversations. The knowledge stays in the repo — versioned, diffable, reviewable in PRs — not locked in a chat history that disappears.
 
+## Why txtscape
+
+- **Zero dependencies** — pure Go standard library. Nothing to audit, nothing to break.
+- **No database** — the filesystem is the storage layer. Plain `.txt` files in `.txtscape/pages/`.
+- **Plain text in git** — diffable, reviewable in PRs, portable across tools.
+- **Configurable taxonomy** — each project defines its own memory structure via `config.json`.
+- **No lock-in** — stop using txtscape and your `.txt` files stay. They're just files.
+- **Stays out of your way** — pages live in `.txtscape/`, not scattered markdown files across your project. Add a `.ignore` file to exclude them from code search.
+- **LLM-native** — plain text that any model already understands. No special format to parse.
+- **Stdio subprocess** — your IDE launches it, talks over stdin/stdout, and it exits when done. No ports, no background process, no attack surface.
+- **MIT licensed**
+
+### Works with
+
+VS Code (Copilot) · Cursor · Windsurf · Claude Desktop · Claude Code · Zed · JetBrains (via MCP plugin) · Neovim (via MCP plugins) — any MCP-compatible client.
+
 ## Install
 
 TBD — installation instructions coming soon.
@@ -69,4 +85,4 @@ make dev    # run locally on :8080
 
 ## License
 
-See [LICENSE.md](LICENSE.md).
+MIT — see [LICENSE.txt](LICENSE.txt).
