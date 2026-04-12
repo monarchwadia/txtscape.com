@@ -571,9 +571,11 @@ pre code {
     .features-grid {
         grid-template-columns: 1fr 1fr;
     }
+
     .compare {
         grid-template-columns: 1fr;
     }
+
     .tools-grid {
         grid-template-columns: 1fr;
     }
