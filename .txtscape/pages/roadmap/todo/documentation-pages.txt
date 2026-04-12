@@ -1,3 +1,68 @@
-# Create Extensive Documentation Pages
+# Documentation Pages
 
-Write accurate, comprehensive documentation for the website covering: UI subcommand usage, all views (dashboard, explore, kanban, page viewer), search, activity feed, SSE live updates, config options, and kanban auto-detection logic.
+Blocked by: roadmap/todo/split-ui-scripts.txt (UI should be stable before documenting)
+Blocked by: roadmap/todo/e2e-tests-for-ui.txt (verified behavior to document accurately)
+
+## Business Requirements
+
+### Problem Statement
+The UI subcommand exists and works, but there's no documentation for it on the website. Users who discover the ui command have no reference material for: what views exist, how kanban auto-detection works, how search works, how SSE updates work, or what the config options affect in the UI. The only documentation is the SPA architecture decision page in the journal, which is internal.
+
+### Why This Matters
+Documentation is conversion infrastructure. A potential adopter who sees "txtscape has a local dashboard" needs to see what it looks like and how it works before they'll try it. The tutorial (add-to-tutorial) will link to these pages for deeper reference.
+
+### Success Criteria
+- [ ] Comprehensive documentation pages exist on the website covering the UI subcommand
+- [ ] Each view (dashboard, explore, kanban, page viewer) is documented with expected behavior
+- [ ] Search, activity feed, and SSE live updates are documented
+- [ ] Config options that affect the UI (concerns, nickname, swimlanes) are documented
+
+## Strategic & Tactical Context
+
+### Strategic Goals
+Support adoption by giving users a reference they can consult independently of the tutorial. Also supports the beginner-friendly goal from todos/beginner-friendly.txt.
+
+### Constraints
+- Same format as existing tutorial: HTML files in content/ using layout.html
+- Follow design principles from decisions/design-principles.txt: lead with benefits, no clutter, prominent CTAs, visual QA
+- Must be accurate to current behavior (not aspirational)
+
+### Non-Goals
+- Not documenting the MCP tools (those are already in the tutorial)
+- Not redesigning the website — just adding pages
+- Not covering the Go API internals
+
+## User Stories
+
+### Primary Story
+As a developer evaluating txtscape, I want to see what the local dashboard looks like and what it can do so that I can decide whether to try it.
+
+### Secondary Story
+As a user who installed txtscape, I want reference docs for the UI so that I can look up how kanban auto-detection works without re-reading the tutorial.
+
+### Acceptance Criteria
+- Given I navigate to the docs section, when I click on "Dashboard," then I see a description of the dashboard with stats, concerns, and kanban progress
+- Given I want to understand kanban, when I read the kanban docs, then I learn the auto-detection rules (all children are dirs → kanban) and swimlanes config
+
+## Visual & UX Design
+
+### User Flow
+1. User lands on the docs index from the main site navigation
+2. Sees a list of topics (Dashboard, Explore, Kanban, Search, Activity, Configuration)
+3. Clicks a topic and reads the documentation
+4. Each page links to related pages (e.g., kanban links to configuration for swimlanes)
+
+### Layout & Visual Reasoning
+Same structure as the tutorial — content pages with layout.html. Navigation follows the tutorial's step-list pattern but organized by topic rather than sequence.
+
+### Design Principles Applied
+- Lead with what the user sees and can do, not how it's implemented
+- Screenshots or visual descriptions of each view
+- Prominent links to the tutorial for "learn by doing" users
+
+## Sources
+
+Journal pages consulted:
+- decisions/spa-ui-architecture.txt — definitive list of features and views to document
+- decisions/design-principles.txt — writing style and layout principles for web content
+- todos/beginner-friendly.txt — documentation is a key part of the beginner-friendly initiative

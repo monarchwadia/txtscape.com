@@ -1,3 +1,69 @@
-# Clean Up UI Code Into Multiple Scripts
+# Split UI Scripts
 
-Split app.js into smaller focused scripts (routing, rendering, search, activity, kanban, markdown, etc). Keep zero dependencies — no bundler, no framework, no build step. Use plain script tags or a lightweight module pattern.
+Blocked by: roadmap/todo/spike-node-test.txt (informs testability structure)
+Blocked by: roadmap/todo/e2e-tests-for-ui.txt (safety net for the refactor)
+
+## Business Requirements
+
+### Problem Statement
+app.js is a 519-line IIFE containing routing, rendering, API calls, markdown parsing, kanban logic, search, activity panel, and SSE handling. It's a single function with no internal boundaries. This makes it hard to test (everything is private to the closure), hard to navigate, and risky to modify (changes in one area can break another).
+
+### Why This Matters
+All future UI work — documentation pages, tutorial additions, new features — touches this file. Without separation, every change risks unrelated breakage. The spike (spike-node-test) will determine whether split modules are also unit-testable with node:test, making the split even more valuable.
+
+### Success Criteria
+- [ ] app.js is replaced by multiple focused scripts loaded via <script> tags
+- [ ] Each script has a single responsibility (routing, rendering, etc.)
+- [ ] The UI behaves identically before and after the split (verified by e2e tests)
+- [ ] If the spike confirmed node:test works, split modules have unit tests
+
+## Strategic & Tactical Context
+
+### Strategic Goals
+Make the UI codebase maintainable as features are added. The split is an investment in velocity: smaller files are easier for both humans and LLMs to reason about.
+
+### Constraints
+- Zero dependencies — no bundler, no framework, no ES module transpilation
+- Plain <script> tags or a lightweight module pattern (global namespace or revealing module)
+- The split must not change any user-visible behavior
+- Must work in the same embed.FS setup (Go serves static files from ui/static/)
+
+### Dependencies
+- Depends on: spike-node-test (informs whether to structure for testability)
+- Depends on: e2e-tests-for-ui (safety net for the refactor)
+
+### Non-Goals
+- Not adding new features — this is a pure refactor
+- Not introducing a build step or module bundler
+- Not changing the CSS or HTML structure
+
+## User Stories
+
+### Primary Story
+As an LLM agent implementing a new UI feature, I want each area of the UI in its own file so that I can read and modify one concern without loading 519 lines of unrelated code.
+
+### Acceptance Criteria
+- Given I need to change kanban rendering, when I open the kanban script, then I see only kanban-related code
+- Given I need to add a new route, when I open the routing script, then I see only routing logic
+- Given the scripts are loaded in order, when the page loads, then the UI works identically to the monolithic version
+
+## High-Level Design
+
+### Approach
+Set principles for the split; let the implementer determine exact boundaries based on natural seams in the code.
+
+### Principles
+1. One responsibility per file — a file should do one thing (routing, markdown, kanban, etc.)
+2. Shared state is explicit — if scripts share state, use a single window.App or similar namespace
+3. Load order matters — scripts are loaded via <script> tags in dependency order
+4. No circular dependencies — if A depends on B, B must not depend on A
+5. Test-friendly when possible — if node:test spike succeeded, export functions for testing via module.exports when running in Node
+
+### Risks & Open Questions
+- If the spike shows node:test doesn't work without a bundler, the split is still worth doing for maintainability, but won't gain unit testability
+
+## Sources
+
+Journal pages consulted:
+- decisions/spa-ui-architecture.txt — vanilla JS, no framework, no build step; split must preserve this
+- references/skills/shared/methodology.txt — refactoring should be verified at each step

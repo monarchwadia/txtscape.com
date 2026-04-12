@@ -1,3 +1,68 @@
-# E2E Tests for UI
+# E2E Tests for UI (Playwright)
 
-Install Playwright in the devcontainer. Figure out how to call it ideally from Go. Write browser-level e2e tests exercising the SPA: dashboard rendering, kanban board interactions, page viewer, search, activity panel, navigation, and SSE live updates.
+Blocked by: roadmap/todo/spike-node-test.txt (informs testing strategy)
+
+## Business Requirements
+
+### Problem Statement
+The UI SPA has Go-level API tests (ui_test.go) and basic API e2e tests (ui_e2e_test.go), but no browser-level testing. There's no verification that the dashboard renders, that kanban boards display correctly, that search works in the browser, or that SSE live updates actually update the DOM. Regressions in the rendered UI are invisible until a human checks manually.
+
+### Why This Matters
+The UI is about to be refactored (split-ui-scripts) and extended (documentation, tutorial). Browser-level e2e tests are the safety net that must exist before refactoring begins. Without them, the split-ui-scripts work risks breaking the user experience with no automated detection.
+
+### Success Criteria
+- [ ] Playwright tests run against the live UI server and verify rendered DOM state
+- [ ] Dashboard, explore, kanban, page viewer, search, and activity panel are covered
+- [ ] Tests run in CI (headless Chromium)
+- [ ] A test failure produces a clear error identifying what broke
+
+## Strategic & Tactical Context
+
+### Strategic Goals
+Complete the e2e layer of the test pyramid for the UI. Combined with Go API tests (integration) and the planned node:test unit tests (from spike), this gives full-stack coverage.
+
+### Constraints
+- Zero Go dependencies — Playwright runs as standalone JS scripts via npx playwright
+- Playwright itself is a dev tool (npm), not a Go dependency — this is acceptable
+- The UI server must be started before tests run (same pattern as existing ui_e2e_test.go)
+- Tests must be idempotent — each test creates its own temp workspace
+
+### Dependencies
+- Depends on: existing txtscape-mcp ui subcommand and e2e infrastructure in e2e/
+
+### Non-Goals
+- Not testing the MCP stdio server — that's covered by existing e2e tests
+- Not visual regression testing (pixel comparison) — just DOM assertions
+- Not testing on multiple browsers — headless Chromium only
+
+## User Stories
+
+### Primary Story
+As a developer refactoring the UI, I want browser-level e2e tests so that I can split app.js without accidentally breaking the user experience.
+
+### Acceptance Criteria
+- Given a workspace with pages and config, when I open the dashboard, then I see page count, folder count, and concern cards
+- Given a concern folder with only subfolders, when I navigate to it, then I see a kanban board with columns
+- Given pages exist, when I type a search query, then the dropdown shows matching results with paths and context
+- Given the SSE connection is active, when a page is created on disk, then the dashboard updates without refresh
+
+## High-Level Design
+
+### Approach
+Standalone JS Playwright test scripts in a new directory (e.g., txtscape-mcp/e2e/playwright/). Each test:
+1. Creates a temp workspace with pages and config
+2. Starts the UI server pointing at that workspace
+3. Opens a headless browser and navigates
+4. Asserts on DOM content
+5. Tears down
+
+### Key Design Decisions
+- Standalone JS, not Go-orchestrated: The existing ui_e2e_test.go pattern of Go-orchestrating subprocesses works for API-level tests, but Playwright's JS API is its native surface. Standalone scripts are simpler and more maintainable.
+- npx playwright, not installed globally: Consistent with zero-dep — Playwright is a dev tool, not a production dependency.
+
+## Sources
+
+Journal pages consulted:
+- decisions/spa-ui-architecture.txt — defines all views and features that need e2e coverage
+- learnings/usability-testing.txt — revealed that agents expect specific DOM structures; e2e tests should verify these
+- references/skills/shared/methodology.txt — e2e is the outermost layer of the test pyramid

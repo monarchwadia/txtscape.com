@@ -1,3 +1,55 @@
-# Spike: Test Scripts with node:test
+# Spike: Test Frontend Scripts with node:test
 
-Explore whether any of the frontend JS can be unit tested with node:test (Node's built-in test runner). This is a spike — evaluate feasibility, not a commitment. Zero dependency constraint means no Jest, Vitest, etc.
+## Business Requirements
+
+### Problem Statement
+The UI (app.js, 519 lines) is a monolithic IIFE with no unit tests. The Go-side ui_test.go tests the HTTP API but nothing validates the frontend logic — routing, kanban detection, markdown rendering, tree resolution. These are pure functions buried in a closure with no way to test them in isolation.
+
+### Why This Matters
+Before splitting app.js into modules (a prerequisite for safe refactoring), we need to know whether those modules can be tested with node:test — Node's built-in test runner. If yes, we get a zero-dependency frontend unit test layer that aligns with the multilayer test strategy (/write skill methodology). If no (e.g., DOM APIs or ES module interop require a bundler), we discover that constraint early and adjust the split strategy.
+
+### Success Criteria
+- [ ] A standalone .js file extracted from app.js can be require()-d and tested with node:test
+- [ ] DOM manipulation patterns can be tested (with or without lightweight stubs)
+- [ ] fetch-dependent code can be tested with manual mocks (no test framework deps)
+- [ ] A clear go/no-go verdict with documented reasoning
+
+## Strategic & Tactical Context
+
+### Strategic Goals
+Establish the unit test layer for the frontend. If node:test works, the split-ui-scripts spec has a clear path: each split script is independently testable. This completes the multilayer test pyramid: node:test (unit) → Go API tests (integration) → Playwright (e2e).
+
+### Constraints
+- Zero external dependencies — no Jest, Vitest, jsdom, or bundlers
+- Must work with plain <script> tags in the HTML (no ES module transpilation in the browser unless also tested)
+- Node 18+ available in devcontainer
+
+### Non-Goals
+- Not building a test suite — just proving the pattern works
+- Not splitting app.js yet — just extracting one or two functions as test subjects
+- Not testing the Go backend
+
+## Spike Deliverables
+
+Test three patterns to cover the range of frontend code:
+
+1. Pure logic — extract computeStats(), countFiles(), isKanbanConcern() into a file. These take data in and return data out. Easiest case.
+
+2. DOM manipulation — extract renderMarkdown() or esc(). These use document.createElement. Test with a minimal DOM stub or determine if a shim is needed.
+
+3. Fetch/API — extract api() and loadConfig(). These call fetch. Test with a manual global.fetch mock.
+
+## Go/No-Go Criteria
+
+| Outcome | What it means |
+|---------|--------------|
+| All 3 patterns work without a bundler | Go — split app.js into testable modules, add node:test to CI |
+| Pure logic works but DOM/fetch need stubs | Go with caveat — split logic from rendering, test what's testable |
+| Requires a bundler or framework shim | No-go — rely on Playwright e2e only, don't split for testability |
+
+## Sources
+
+Journal pages consulted:
+- decisions/spa-ui-architecture.txt — confirms vanilla JS, no framework, no build step; modules must stay compatible
+- decisions/flat-file-storage.txt — zero-dep principle extends to tooling
+- references/skills/shared/methodology.txt — multilayer test strategy requires a unit test layer

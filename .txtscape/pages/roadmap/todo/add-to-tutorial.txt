@@ -1,3 +1,67 @@
 # Add UI to Tutorial
 
-Add the `ui` subcommand to the txtscape tutorial. Cover starting the server, navigating the dashboard, exploring pages, using the kanban board view, search, and activity feed.
+Blocked by: roadmap/todo/documentation-pages.txt (tutorial links to docs for deeper reference)
+Blocked by: roadmap/todo/e2e-tests-for-ui.txt (tutorial reflects verified behavior)
+Blocked by: roadmap/todo/split-ui-scripts.txt (UI should be stable before adding to tutorial)
+
+## Business Requirements
+
+### Problem Statement
+The tutorial covers steps 1–6 (install, define, populate, deepen, build, revise) but doesn't mention the UI at all. Users who complete the tutorial don't know they can visualize their knowledge base with txtscape-mcp ui. The UI — especially the kanban board and dashboard — is one of the most compelling features, and it's invisible in the getting-started path.
+
+### Why This Matters
+The tutorial is the primary conversion funnel. Adding the UI step shows the tangible, visual payoff of the work the user just did (building a labyrinth). It's the "wow" moment — their journal pages rendered as a dashboard with a kanban board. Missing this moment means missing the strongest argument for adoption.
+
+### Success Criteria
+- [ ] A new tutorial step covers starting txtscape-mcp ui and exploring the dashboard
+- [ ] The kanban board is shown with the roadmap concern from previous steps
+- [ ] Search is demonstrated with a query the user can follow along with
+- [ ] The tutorial step fits naturally into the existing narrative flow
+
+## Strategic & Tactical Context
+
+### Strategic Goals
+Complete the tutorial's narrative arc: you built something → now see it visualized. This also drives adoption of the UI subcommand itself.
+
+### Constraints
+- Must use the same HTML format as existing tutorial steps (content/tutorial/*.html)
+- Must follow the labyrinth narrative (the user has rooms, characters, a generated game)
+- Tutorial output must match actual tool behavior (lesson from learnings/usability-testing.txt)
+
+### Non-Goals
+- Not restructuring the existing 6 steps — adding a new step (step 7) or weaving it in
+- Not covering every UI feature — just the highlights that reward the tutorial work
+- Not making the tutorial longer than necessary
+
+## User Stories
+
+### Primary Story
+As a developer who just completed the labyrinth tutorial, I want to see my pages rendered in a visual dashboard so that I experience the tangible payoff of structured project memory.
+
+### Acceptance Criteria
+- Given I completed steps 1–6, when I run txtscape-mcp ui, then I see a dashboard with my rooms and characters
+- Given the rooms concern has subfolders, when I navigate to it, then I see a kanban board
+- Given I search for "Minotaur," when I see results, then I find the character pages
+
+## Visual & UX Design
+
+### User Flow (tutorial step)
+1. User runs txtscape-mcp ui in their terminal
+2. Opens the localhost URL in their browser
+3. Sees the dashboard with stats (8 pages, 2 concerns)
+4. Clicks on a concern, sees the folder explorer
+5. Searches for a character name, sees results
+6. (If applicable) sees the kanban board for a concern with subfolders
+
+### Design Principles Applied
+- Show, don't tell — the tutorial describes what the user will see, then they see it
+- Follow the labyrinth narrative — use the same room and character names the user created
+- Keep it short — this is a reward step, not a deep dive (link to docs for more)
+
+## Sources
+
+Journal pages consulted:
+- decisions/spa-ui-architecture.txt — what the UI can do, informed the tutorial scope
+- learnings/usability-testing.txt — tutorial output must match actual behavior
+- learnings/thorough-tester-run-2026-04-11.txt — verified the tutorial flow through step 6; step 7 picks up from there
+- decisions/design-principles.txt — tutorial pages follow the same "lead with value" principle
