@@ -1,0 +1,118 @@
+# Refine Requirements — Methodology
+
+## Purpose
+
+This skill transforms rough ideas into structured specs that give an LLM enough
+context to implement well. The output is a single document covering business
+rationale, user stories, architecture, and UX design.
+
+## Core Principles
+
+### 1. Why Before What
+Always establish the business problem and strategic justification before
+describing the solution. An LLM that understands why a feature exists makes
+better implementation decisions than one given only a task list.
+
+### 2. Outside-In Thinking
+Start from the user's perspective and work inward:
+- What does the user experience today? (pain)
+- What should they experience after? (success criteria)
+- What user stories capture that change? (stories)
+- What architecture supports those stories? (design)
+- What does it look like and feel like? (UX)
+
+### 3. Constraints Narrow the Solution Space
+Explicitly stating non-goals, constraints, and dependencies prevents the
+implementer from solving the wrong problem or gold-plating.
+
+### 4. Design Reasoning, Not Design Spec
+The UX section should reason about the experience — user flows, visual
+hierarchy, interaction patterns — not produce pixel-level mockups. The goal
+is to inform implementation decisions, not replace a designer.
+
+## Writing Good Business Requirements
+
+### Problem Statements
+Bad: "We need search"
+Good: "Users with 50+ journal pages can't find the page they wrote last week.
+They scroll through list_pages output or grep manually. This gets worse linearly
+as the journal grows."
+
+### Success Criteria
+Bad: "Search works"
+Good: "A user can find any page by a word they remember from its content, in
+under 2 seconds, from the dashboard."
+
+Criteria should be:
+- Observable (you can see it happen)
+- Measurable (you can tell pass/fail)
+- User-facing (not implementation metrics)
+
+## Writing Good User Stories
+
+### The Format
+As a [specific persona], I want to [concrete action] so that [valuable outcome].
+
+### Acceptance Criteria
+Use Given/When/Then for testable precision:
+- Given I have 100 pages in my journal
+- When I type "auth" in the search box
+- Then I see all pages containing "auth", ranked by relevance
+
+### Common Mistakes
+- Stories that describe implementation ("As a developer, I want a search index")
+- Outcomes that are really tasks ("so that the search handler is implemented")
+- Missing the persona's actual motivation
+
+## Reasoning About Visual Design
+
+### The User Flow
+Walk through every step the user takes. Number them. Be specific about what
+they see, what they click, and what feedback they get. This reveals gaps that
+abstract specs miss.
+
+### Layout Reasoning
+Instead of "put a search box somewhere," reason about:
+- Where is the user's attention when they need this feature?
+- What existing UI elements does this relate to?
+- What visual hierarchy puts the most important thing first?
+
+### Interaction States
+Every interactive element has states. Think through:
+- Empty state (nothing to show yet)
+- Loading state (waiting for results)
+- Success state (results are shown)
+- Error state (something went wrong)
+- Edge cases (too many results, no results, partial match)
+
+### DX for Non-Visual Features
+For CLI tools, APIs, or backend features, apply the same thinking to:
+- Command discoverability (how does the user learn this exists?)
+- Output format (what does the response look like?)
+- Error messages (do they help the user fix the problem?)
+- Progressive complexity (simple use first, advanced options later)
+
+## Integration with the Journal
+
+### Before Refining
+Thoroughly read the journal for:
+- Existing decisions that constrain the solution
+- Architecture pages that describe the current system
+- User signals that validate the problem
+- Learnings that inform design choices
+- Todo and roadmap pages that describe related plans
+- Reference material relevant to the domain
+
+Use search_pages with multiple keyword variations. Use related_pages to
+discover cross-references. Read broadly — context you miss here becomes
+a blind spot in the spec.
+
+### Read-Only Discipline
+This skill never writes to the journal. It reads, synthesizes, and outputs
+the spec to the conversation. The user decides where (or whether) to store it.
+
+### Citing Sources
+Every journal page that influenced the spec should be cited in a Sources
+section at the end. Name the page and state how it shaped the output.
+This creates traceability and helps the user verify the spec against
+project context.
